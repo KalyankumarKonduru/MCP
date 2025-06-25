@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { Meteor } from 'meteor/meteor';
 import { useTracker } from 'meteor/react-meteor-data';
 import { Header } from '/client/components/custom/Header';
@@ -53,42 +53,38 @@ export const Chat: React.FC = () => {
       console.error('Error processing message:', error);
       
       // Add error message
-      await Meteor.callAsync('messages.insert', {
-        content: 'Sorry, I encountered an error while processing your request. Please try again.',
-        role: 'assistant',
-        timestamp: new Date(),
-        sessionId
-      });
+      try {
+        await Meteor.callAsync('messages.insert', {
+          content: 'Sorry, I encountered an error while processing your request. Please try again.',
+          role: 'assistant',
+          timestamp: new Date(),
+          sessionId
+        });
+      } catch (insertError) {
+        console.error('Error inserting error message:', insertError);
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="flex flex-col h-screen bg-background">
+    <div className="flex flex-col h-dvh bg-background">
       <Header />
-      
       <div
-        className="flex flex-col min-w-0 gap-6 flex-1 overflow-y-scroll pt-4"
+        className="flex flex-col gap-6 flex-1 overflow-y-scroll pt-4"
         ref={messagesContainerRef}
       >
         {messages.length === 0 && <Overview />}
-        
-        {messages.map((message) => (
-          <PreviewMessage
-            key={message._id}
-            message={message}
-          />
+        {messages.map((message, index) => (
+          <PreviewMessage key={index} message={message} />
         ))}
-        
         {isLoading && <ThinkingMessage />}
-        
         <div
           ref={messagesEndRef}
-          className="shrink-0 min-w-[24px] min-h-[24px]"
+          className="shrink-0 min-w-24 min-h-24"
         />
       </div>
-
       <div className="flex mx-auto px-4 bg-background pb-4 md:pb-6 gap-2 w-full md:max-w-3xl">
         <ChatInput
           onSubmit={handleSubmit}

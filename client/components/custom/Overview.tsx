@@ -1,22 +1,21 @@
 import React from 'react';
-import { motion } from 'framer-motion';
-import { MessageCircle, Bot } from 'lucide-react';
+import { MessageCircle, Bot as BotIcon } from "lucide-react";
 
 export const Overview: React.FC = () => {
   return (
-    <motion.div
-      key="overview"
+    <div
       className="max-w-3xl mx-auto md:mt-20"
-      initial={{ opacity: 0, scale: 0.98 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.98 }}
-      transition={{ delay: 0.75 }}
+      style={{
+        animation: 'fadeIn 0.3s ease-out 0.75s both',
+        transform: 'scale(0.98)',
+        animationFillMode: 'forwards'
+      }}
     >
       <div className="rounded-xl p-6 flex flex-col gap-8 leading-relaxed text-center max-w-xl mx-auto">
         <div className="flex flex-row justify-center gap-4 items-center">
-          <Bot size={44} className="text-primary" />
+          <BotIcon size={44} />
           <span className="text-2xl">+</span>
-          <MessageCircle size={44} className="text-primary" />
+          <MessageCircle size={44} />
         </div>
         <div>
           <h1 className="text-3xl font-bold mb-4">Welcome to MCP Pilot</h1>
@@ -27,6 +26,6 @@ export const Overview: React.FC = () => {
           </p>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 };

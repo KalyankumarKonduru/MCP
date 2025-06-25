@@ -1,15 +1,14 @@
 import Anthropic from '@anthropic-ai/sdk';
-import OpenAI from 'openai';
 
 export interface MCPClientConfig {
-  provider: 'openai' | 'anthropic';
+  provider: 'anthropic' | 'ozwell';
   apiKey: string;
+  ozwellEndpoint?: string;
 }
 
 export class MCPClientManager {
   private static instance: MCPClientManager;
   private anthropic?: Anthropic;
-  private openai?: OpenAI;
   private isInitialized = false;
   private config?: MCPClientConfig;
 
@@ -23,37 +22,59 @@ export class MCPClientManager {
   }
 
   public async initialize(config: MCPClientConfig): Promise<void> {
+    console.log('Initializing MCP Client with config:', { 
+      provider: config.provider, 
+      hasApiKey: !!config.apiKey,
+      apiKeyLength: config.apiKey?.length,
+      ozwellEndpoint: config.ozwellEndpoint
+    });
+    
     this.config = config;
 
     try {
       if (config.provider === 'anthropic') {
+        console.log('Creating Anthropic client...');
         this.anthropic = new Anthropic({
           apiKey: config.apiKey,
         });
-      } else {
-        this.openai = new OpenAI({
-          apiKey: config.apiKey,
-        });
+        console.log('Anthropic client created successfully');
+      } else if (config.provider === 'ozwell') {
+        console.log('Ozwell provider configured with endpoint:', config.ozwellEndpoint);
       }
 
       this.isInitialized = true;
-      console.log('MCP Client initialized with provider:', config.provider);
+      console.log('✅ MCP Client initialized successfully with provider:', config.provider);
     } catch (error) {
-      console.error('Failed to initialize MCP client:', error);
+      console.error('❌ Failed to initialize MCP client:', error);
       throw error;
     }
   }
 
-  public async processQuery(query: string): Promise<string> {
-    if (!this.isInitialized) {
+  public async switchProvider(provider: 'anthropic' | 'ozwell'): Promise<void> {
+    if (!this.config) {
       throw new Error('MCP Client not initialized');
     }
 
+    this.config.provider = provider;
+    console.log(`🔄 Switched to ${provider.toUpperCase()} provider`);
+  }
+
+  public async processQuery(query: string): Promise<string> {
+    console.log('Processing query with provider:', this.config?.provider);
+    
+    if (!this.isInitialized || !this.config) {
+      const error = 'MCP Client not initialized';
+      console.error(error);
+      throw new Error(error);
+    }
+
     try {
-      if (this.config?.provider === 'anthropic' && this.anthropic) {
+      if (this.config.provider === 'anthropic' && this.anthropic) {
+        console.log('Using Anthropic for processing...');
         return await this.processWithAnthropic(query);
-      } else if (this.openai) {
-        return await this.processWithOpenAI(query);
+      } else if (this.config.provider === 'ozwell') {
+        console.log('Using Ozwell for processing...');
+        return await this.processWithOzwell(query);
       }
       throw new Error('No LLM provider configured');
     } catch (error) {
@@ -76,14 +97,36 @@ export class MCPClientManager {
     return 'No response generated';
   }
 
-  private async processWithOpenAI(query: string): Promise<string> {
-    const response = await this.openai!.chat.completions.create({
-      model: 'gpt-4',
-      max_tokens: 1000,
-      messages: [{ role: 'user', content: query }],
-    });
+  private async processWithOzwell(query: string): Promise<string> {
+    const endpoint = this.config?.ozwellEndpoint || 'https://ai.bluehive.com/api/v1/completion';
+    
+    try {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.config?.apiKey}`,
+        },
+        body: JSON.stringify({
+          prompt: query,
+          max_tokens: 1000,
+          temperature: 0.7,
+          stream: false,
+        }),
+      });
 
-    return response.choices[0].message.content || 'No response generated';
+      if (!response.ok) {
+        throw new Error(`Ozwell API error: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      
+      // Adjust this based on Ozwell's actual response format
+      return data.choices?.[0]?.text || data.completion || data.response || 'No response generated';
+    } catch (error) {
+      console.error('Ozwell API error:', error);
+      throw new Error(`Failed to get response from Ozwell: ${error}`);
+    }
   }
 
   public isReady(): boolean {
@@ -94,7 +137,12 @@ export class MCPClientManager {
     return this.config;
   }
 
+  public getCurrentProvider(): 'anthropic' | 'ozwell' | undefined {
+    return this.config?.provider;
+  }
+
   public async shutdown(): Promise<void> {
+    console.log('Shutting down MCP Client...');
     this.isInitialized = false;
   }
 }
