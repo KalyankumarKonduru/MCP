@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import { Button } from '../ui/Button';
-import { Textarea } from '../ui/Textarea';
-import { ArrowUpIcon } from './Icons';
+import { Textarea } from "../ui/Textarea";
+import { cn } from '/imports/lib/utils';
+import { Button } from "../ui/Button";
+import { ArrowUpIcon } from "./Icons";
 
 interface ChatInputProps {
   onSubmit: (text: string) => void;
@@ -11,36 +11,25 @@ interface ChatInputProps {
 
 const suggestedActions = [
   {
-    title: "Explain me what can you do?",
+    title: "Explain me what can you do ?",
     label: "With all the parameters",
     action: "Explain me what can you do? With all the parameters",
   },
   {
-    title: "Help me write code",
-    label: "for a React component",
-    action: "Help me write code for a React component",
-  },
-  {
-    title: "What's the weather like?",
-    label: "in my current location",
-    action: "What's the weather like in my current location?",
-  },
-  {
-    title: "Tell me a story",
-    label: "about space exploration",
-    action: "Tell me a story about space exploration",
+    title: "Give me a Mars photo",
+    label: "of earth date 24th Feb 2024",
+    action: "Give me a Mars photo of earth date 24th Feb 2024",
   },
 ];
 
 export const ChatInput: React.FC<ChatInputProps> = ({ onSubmit, disabled }) => {
-  const [input, setInput] = useState('');
+  const [question, setQuestion] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(true);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (input.trim() && !disabled) {
-      onSubmit(input.trim());
-      setInput('');
+  const handleSubmit = () => {
+    if (question.trim() && !disabled) {
+      onSubmit(question.trim());
+      setQuestion('');
       setShowSuggestions(false);
     }
   };
@@ -50,60 +39,69 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSubmit, disabled }) => {
     setShowSuggestions(false);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSubmit(e);
-    }
-  };
-
   return (
     <div className="relative w-full flex flex-col gap-4">
       {showSuggestions && (
         <div className="hidden md:grid sm:grid-cols-2 gap-2 w-full">
           {suggestedActions.map((suggestedAction, index) => (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 20 }}
-              transition={{ delay: 0.05 * index }}
+            <div
               key={index}
               className={index > 1 ? "hidden sm:block" : "block"}
+              style={{
+                animation: `fadeIn 0.3s ease-out ${0.05 * index}s both`
+              }}
             >
               <Button
-                variant="outline"
+                variant="ghost"
                 onClick={() => handleSuggestionClick(suggestedAction.action)}
-                className="text-left border rounded-xl px-4 py-3.5 text-sm flex-1 gap-1 sm:flex-col w-full h-auto justify-start items-start hover:bg-muted"
+                className="text-left border rounded-xl px-4 py-3.5 text-sm flex-1 gap-1 sm:flex-col w-full h-auto justify-start items-start"
+                style={{ height: 'auto' }}
               >
                 <span className="font-medium">{suggestedAction.title}</span>
-                <span className="text-muted-foreground text-xs">
+                <span className="text-muted-foreground">
                   {suggestedAction.label}
                 </span>
               </Button>
-            </motion.div>
+            </div>
           ))}
         </div>
       )}
-
-      <form onSubmit={handleSubmit} className="relative">
+      
+      <div className="relative">
         <Textarea
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
           placeholder="Send a message..."
-          disabled={disabled}
-          className="pr-12 min-h-[60px] resize-none rounded-xl bg-muted"
+          className={cn(
+            "min-h-24 overflow-hidden resize-none rounded-xl text-base bg-muted pr-12"
+          )}
+          value={question}
+          onChange={(e) => setQuestion(e.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" && !event.shiftKey) {
+              event.preventDefault();
+              if (!disabled) {
+                setShowSuggestions(false);
+                handleSubmit();
+              }
+            }
+          }}
           rows={3}
+          autoFocus
         />
+
         <Button
-          type="submit"
-          size="sm"
-          disabled={!input.trim() || disabled}
-          className="absolute right-2 bottom-2 rounded-full p-1.5 h-fit m-0.5"
+          className="rounded-full absolute bottom-2 right-2"
+          style={{ 
+            padding: '0.375rem',
+            height: 'fit-content',
+            margin: '0.125rem',
+            border: '1px solid var(--border)'
+          }}
+          onClick={handleSubmit}
+          disabled={question.length === 0 || disabled}
         >
           <ArrowUpIcon size={14} />
         </Button>
-      </form>
+      </div>
     </div>
   );
 };
