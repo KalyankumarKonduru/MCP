@@ -50,25 +50,29 @@ Meteor.startup(async () => {
       console.log('🔄 Both providers available - you can switch between them in the chat');
     }
 
-    // Connect to medical MCP server via stdio
-    const medicalServerPath = settings?.MEDICAL_MCP_SERVER_PATH || process.env.MEDICAL_MCP_SERVER_PATH;
+    // Connect to medical MCP server via Streamable HTTP
+    const mcpServerUrl = settings?.MEDICAL_MCP_SERVER_URL || 
+                        process.env.MEDICAL_MCP_SERVER_URL || 
+                        'http://localhost:3001';
     
-    if (!medicalServerPath) {
-      console.warn('⚠️  Medical MCP Server path not configured.');
-      console.warn('   Add MEDICAL_MCP_SERVER_PATH to your settings.json to enable medical document features.');
-      console.warn('   Example: "MEDICAL_MCP_SERVER_PATH": "/path/to/MCP-Server/dist/index.js"');
+    if (!mcpServerUrl || mcpServerUrl === 'DISABLED') {
+      console.warn('⚠️  Medical MCP Server URL not configured or disabled.');
+      console.warn('   Add MEDICAL_MCP_SERVER_URL to your settings.json to enable medical document features.');
+      console.warn('   Example: "MEDICAL_MCP_SERVER_URL": "http://localhost:3001"');
     } else {
       try {
-        console.log(`📄 Attempting to connect to Medical MCP Server at: ${medicalServerPath}`);
+        console.log(`📄 Attempting to connect to Medical MCP Server at: ${mcpServerUrl}`);
         await mcpManager.connectToMedicalServer();
-        console.log('✅ Connected to Medical Document MCP Server via stdio');
+        console.log('✅ Connected to Medical Document MCP Server via Streamable HTTP');
         console.log('🏥 Medical document processing features are now available');
       } catch (error) {
         console.warn('⚠️  Medical MCP Server connection failed:', error);
         console.warn('   Document processing features will be disabled.');
         console.warn('   Make sure to:');
-        console.warn('   1. Build the MCP server: cd /path/to/MCP-Server && npm run build');
-        console.warn('   2. Update MEDICAL_MCP_SERVER_PATH in settings.json');
+        console.warn('   1. Start the MCP server in HTTP mode: npm run start:http');
+        console.warn('   2. Update MEDICAL_MCP_SERVER_URL in settings.json');
+        console.warn('   3. Verify the MCP server is accessible at the configured URL');
+        console.warn('   4. Check that MongoDB and OpenAI credentials are configured in the MCP server');
       }
     }
     

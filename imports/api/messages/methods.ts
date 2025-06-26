@@ -85,7 +85,7 @@ Meteor.methods({
     return providers;
   },
 
-  // Medical document methods
+  // Medical document methods with improved error handling
   async 'medical.uploadDocument'(fileData: {
     filename: string;
     content: string; // Base64
@@ -99,15 +99,29 @@ Meteor.methods({
       patientName: Match.Maybe(String)
     });
 
+    console.log(`📤 Uploading document: ${fileData.filename} (${fileData.mimeType})`);
+
     if (this.isSimulation) {
-      return { success: true, documentId: 'sim-123' };
+      console.log('🔄 Simulation mode - returning mock document ID');
+      return { 
+        success: true, 
+        documentId: 'sim-' + Date.now(),
+        message: 'Document uploaded (simulation mode)'
+      };
     }
 
     const mcpManager = MCPClientManager.getInstance();
     
+    if (!mcpManager.isReady()) {
+      throw new Meteor.Error('mcp-not-ready', 'MCP Client is not ready. Please check server configuration.');
+    }
+
     try {
+      // Check if medical operations are available
       const medical = mcpManager.getMedicalOperations();
       const sessionId = this.connection?.id || 'default';
+      
+      console.log('🔧 Using medical operations to upload document...');
       
       const result = await medical.uploadDocument(
         Buffer.from(fileData.content, 'base64'),
@@ -121,38 +135,73 @@ Meteor.methods({
         }
       );
       
+      console.log('✅ Document uploaded successfully:', result);
       return result;
+      
     } catch (error) {
-      console.error('Document upload error:', error);
-      throw new Meteor.Error('upload-failed', 'Failed to upload document. Medical server may be offline.');
+      console.error('❌ Document upload error:', error);
+      
+      if (error.message && error.message.includes('Medical MCP server not connected')) {
+        throw new Meteor.Error('medical-server-offline', 'Medical document server is not available. Please contact administrator.');
+      }
+      
+      throw new Meteor.Error('upload-failed', `Failed to upload document: ${error.message || 'Unknown error'}`);
     }
   },
 
   async 'medical.processDocument'(documentId: string) {
     check(documentId, String);
     
+    console.log(`🔄 Processing document: ${documentId}`);
+    
     if (this.isSimulation) {
-      return { textExtraction: { success: true }, medicalEntities: { success: true } };
+      console.log('🔄 Simulation mode - returning mock processing result');
+      return { 
+        textExtraction: { 
+          success: true, 
+          extractedText: 'Sample medical text extracted from document',
+          confidence: 95
+        }, 
+        medicalEntities: { 
+          success: true,
+          entities: [
+            { text: 'Diabetes', label: 'CONDITION', confidence: 0.9 },
+            { text: 'Metformin', label: 'MEDICATION', confidence: 0.85 }
+          ]
+        }
+      };
     }
     
     const mcpManager = MCPClientManager.getInstance();
     
+    if (!mcpManager.isReady()) {
+      throw new Meteor.Error('mcp-not-ready', 'MCP Client is not ready');
+    }
+    
     try {
       const medical = mcpManager.getMedicalOperations();
       
+      console.log('🧾 Extracting text from document...');
       // Extract text
       const textResult = await medical.extractText(documentId);
+      console.log('📝 Text extraction result:', textResult.success ? 'Success' : 'Failed');
       
+      console.log('🏷️ Extracting medical entities...');
       // Extract medical entities
       const entitiesResult = await medical.extractMedicalEntities(documentId);
+      console.log('🏷️ Entity extraction result:', entitiesResult.success ? 'Success' : 'Failed');
       
-      return {
+      const result = {
         textExtraction: textResult,
         medicalEntities: entitiesResult
       };
+      
+      console.log('✅ Document processing completed successfully');
+      return result;
+      
     } catch (error) {
-      console.error('Document processing error:', error);
-      throw new Meteor.Error('processing-failed', 'Failed to process document');
+      console.error('❌ Document processing error:', error);
+      throw new Meteor.Error('processing-failed', `Failed to process document: ${error.message || 'Unknown error'}`);
     }
   },
 
@@ -191,6 +240,39 @@ Meteor.methods({
     } catch (error) {
       console.error('Patient summary error:', error);
       throw new Meteor.Error('summary-failed', 'Failed to get patient summary');
+    }
+  },
+
+  // Test method to check MCP tools availability
+  async 'mcp.testConnection'() {
+    if (this.isSimulation) {
+      return { success: true, tools: ['uploadDocument', 'searchDocuments'], mode: 'simulation' };
+    }
+
+    const mcpManager = MCPClientManager.getInstance();
+    
+    if (!mcpManager.isReady()) {
+      return { success: false, error: 'MCP Client not ready', tools: [] };
+    }
+
+    try {
+      const tools = mcpManager.getAvailableTools();
+      const hasMedicalOps = !!mcpManager.getMedicalOperations;
+      
+      return { 
+        success: true, 
+        tools: tools.map(t => t.name),
+        toolCount: tools.length,
+        hasMedicalOperations: hasMedicalOps,
+        mode: 'live'
+      };
+    } catch (error) {
+      return { 
+        success: false, 
+        error: error.message,
+        tools: [],
+        mode: 'error'
+      };
     }
   }
 });

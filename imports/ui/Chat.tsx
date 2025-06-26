@@ -5,7 +5,6 @@ import { Header } from '/client/components/custom/Header';
 import { ChatInput } from '/client/components/custom/ChatInput';
 import { PreviewMessage, ThinkingMessage } from '/client/components/custom/Message';
 import { Overview } from '/client/components/custom/Overview';
-import { DocumentUpload } from '/client/components/custom/DocumentUpload';
 import { useScrollToBottom } from './hooks/useScrollToBottom';
 import { MessagesCollection } from '/imports/api/messages/messages';
 import { v4 as uuidv4 } from 'uuid';
@@ -14,7 +13,7 @@ export const Chat: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [sessionId] = useState(() => uuidv4());
   const [currentPatient, setCurrentPatient] = useState<string>('');
-  const [showUpload, setShowUpload] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [messagesContainerRef] = useScrollToBottom<HTMLDivElement>();
 
@@ -35,11 +34,6 @@ export const Chat: React.FC = () => {
     const patientMatch = text.match(/(?:patient|for)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/i);
     if (patientMatch) {
       setCurrentPatient(patientMatch[1]);
-    }
-
-    // Check if user wants to upload a document
-    if (text.toLowerCase().includes('upload') || text.toLowerCase().includes('document')) {
-      setShowUpload(true);
     }
 
     setIsLoading(true);
@@ -82,10 +76,97 @@ export const Chat: React.FC = () => {
     }
   };
 
-  const handleUploadComplete = (result: any) => {
-    console.log('Document uploaded:', result);
-    // Continue the file after upload
-   setShowUpload(false);
+  const handleFileUpload = async (file: File) => {
+    if (isUploading || isLoading) return;
+
+    console.log('Starting file upload:', file.name, file.type, file.size);
+    setIsUploading(true);
+
+    try {
+      // Show upload status message
+      await Meteor.callAsync('messages.insert', {
+        content: `📤 Uploading "${file.name}"...`,
+        role: 'user',
+        timestamp: new Date(),
+        sessionId
+      });
+
+      // Convert file to base64
+      const base64Content = await fileToBase64(file);
+      console.log('File converted to base64, length:', base64Content.length);
+
+      // Upload document
+      console.log('Calling medical.uploadDocument...');
+      const uploadResult = await Meteor.callAsync('medical.uploadDocument', {
+        filename: file.name,
+        content: base64Content,
+        mimeType: file.type,
+        patientName: currentPatient || 'Unknown Patient'
+      });
+
+      console.log('Upload result:', uploadResult);
+
+      // Process document
+      console.log('Calling medical.processDocument...');
+      const processResult = await Meteor.callAsync('medical.processDocument', uploadResult.documentId);
+      
+      console.log('Process result:', processResult);
+
+      // Add success message
+      const successMessage = `✅ Document "${file.name}" uploaded and processed successfully!\n\n` +
+        `📊 **Processing Summary:**\n` +
+        `- Document ID: ${uploadResult.documentId}\n` +
+        `- Text extracted: ${processResult.textExtraction?.extractedText?.length || 0} characters\n` +
+        `- Medical entities found: ${processResult.medicalEntities?.entities?.length || 0}\n` +
+        `- Processing confidence: ${Math.round(processResult.textExtraction?.confidence || 0)}%\n\n` +
+        `You can now ask questions about this document!`;
+
+      await Meteor.callAsync('messages.insert', {
+        content: successMessage,
+        role: 'assistant',
+        timestamp: new Date(),
+        sessionId
+      });
+
+    } catch (error: any) {
+      console.error('Upload error:', error);
+      
+      let errorMessage = 'Failed to upload document. ';
+      
+      if (error.error === 'upload-failed') {
+        errorMessage += 'The medical server may be offline or not configured properly.';
+      } else if (error.error === 'processing-failed') {
+        errorMessage += 'The document was uploaded but processing failed.';
+      } else if (error.reason) {
+        errorMessage += error.reason;
+      } else {
+        errorMessage += 'Please check the file format and try again.';
+      }
+
+      // Add error message
+      await Meteor.callAsync('messages.insert', {
+        content: `❌ ${errorMessage}`,
+        role: 'assistant',
+        timestamp: new Date(),
+        sessionId
+      });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => {
+        const base64 = reader.result as string;
+        // Remove data URL prefix (data:image/png;base64,)
+        const base64Content = base64.split(',')[1];
+        resolve(base64Content);
+      };
+      reader.onerror = error => reject(error);
+    });
   };
  
   return (
@@ -97,20 +178,12 @@ export const Chat: React.FC = () => {
       >
         {messages.length === 0 && <Overview />}
         
-        {/* Document upload area - shown when needed or at start */}
-        {(showUpload || messages.length === 0) && (
-          <div className="flex justify-center px-4 animate-fade-in">
-            <DocumentUpload 
-              patientName={currentPatient}
-              onUploadComplete={handleUploadComplete}
-            />
-          </div>
-        )}
- 
         {messages.map((message, index) => (
           <PreviewMessage key={index} message={message} />
         ))}
-        {isLoading && <ThinkingMessage />}
+        
+        {(isLoading || isUploading) && <ThinkingMessage />}
+        
         <div
           ref={messagesEndRef}
           className="shrink-0 min-w-24 min-h-24"
@@ -119,9 +192,10 @@ export const Chat: React.FC = () => {
       <div className="flex mx-auto px-4 bg-background pb-4 md:pb-6 gap-2 w-full md:max-w-3xl">
         <ChatInput
           onSubmit={handleSubmit}
-          disabled={isLoading}
+          onFileUpload={handleFileUpload}
+          disabled={isLoading || isUploading}
         />
       </div>
     </div>
   );
- };
+};

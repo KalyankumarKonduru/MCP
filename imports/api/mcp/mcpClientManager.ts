@@ -13,7 +13,7 @@ export class MCPClientManager {
   private isInitialized = false;
   private config?: MCPClientConfig;
   
-  // Medical MCP connection
+  // Medical MCP connection (Streamable HTTP)
   private medicalConnection?: MedicalServerConnection;
   private medicalOperations?: MedicalDocumentOperations;
   private availableTools: any[] = [];
@@ -56,10 +56,18 @@ export class MCPClientManager {
     }
   }
 
-  // Connect to medical MCP server via stdio
+  // Connect to medical MCP server via Streamable HTTP
   public async connectToMedicalServer(): Promise<void> {
     try {
-      this.medicalConnection = new MedicalServerConnection();
+      // Get the MCP server URL from settings (default to localhost:3001)
+      const settings = (global as any).Meteor?.settings?.private;
+      const mcpServerUrl = settings?.MEDICAL_MCP_SERVER_URL || 
+                           process.env.MEDICAL_MCP_SERVER_URL || 
+                           'http://localhost:3001';
+      
+      console.log(`📄 Attempting to connect to Medical MCP Server at: ${mcpServerUrl}`);
+      
+      this.medicalConnection = new MedicalServerConnection(mcpServerUrl);
       await this.medicalConnection.connect();
       this.medicalOperations = createMedicalOperations(this.medicalConnection);
       
@@ -67,7 +75,7 @@ export class MCPClientManager {
       try {
         const toolsResult = await this.medicalConnection.listTools();
         this.availableTools = toolsResult.tools || [];
-        console.log(`✅ Medical MCP Server connected with ${this.availableTools.length} tools available`);
+        console.log(`✅ Medical MCP Server connected via Streamable HTTP with ${this.availableTools.length} tools available`);
         
         // Log available tools
         if (this.availableTools.length > 0) {
@@ -81,7 +89,14 @@ export class MCPClientManager {
       }
       
     } catch (error) {
-      console.error('❌ Failed to connect to Medical MCP Server:', error);
+      console.error('❌ Medical MCP Server HTTP connection failed:', error);
+      console.error('   Document processing features will be disabled.');
+      console.error('   Make sure to:');
+      console.error('   1. Start the MCP server in HTTP mode: npm run start:http');
+      console.error('   2. Check the MCP server URL in settings.json is correct');
+      console.error('   3. Verify the MCP server is accessible at the configured URL');
+      console.error('   4. Check that MongoDB and OpenAI credentials are configured in the MCP server');
+      console.error('   The server is running but MCP connection failed. Check server logs.');
       throw error;
     }
   }
@@ -172,7 +187,7 @@ export class MCPClientManager {
       // If query mentions medical terms or patient, search for context
       if (this.medicalOperations && this.isMedicalQuery(query)) {
         try {
-          // Use the new searchDocuments method
+          // Use the searchDocuments method
           const searchResult = await this.medicalOperations.searchDocuments(query, {
             filter: context?.patientId ? { patientId: context.patientId } : {},
             limit: 3
@@ -323,4 +338,3 @@ When users ask about medical documents, patient data, or need medical analysis, 
     this.isInitialized = false;
   }
 }
-

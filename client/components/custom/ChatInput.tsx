@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Textarea } from "../ui/Textarea";
 import { cn } from '/imports/lib/utils';
 import { Button } from "../ui/Button";
 import { ArrowUpIcon } from "./Icons";
+import { Upload, Paperclip } from 'lucide-react';
 
 interface ChatInputProps {
   onSubmit: (text: string) => void;
+  onFileUpload: (file: File) => void;
   disabled?: boolean;
 }
 
@@ -32,9 +34,10 @@ const suggestedActions = [
   },
 ];
 
-export const ChatInput: React.FC<ChatInputProps> = ({ onSubmit, disabled }) => {
+export const ChatInput: React.FC<ChatInputProps> = ({ onSubmit, onFileUpload, disabled }) => {
   const [question, setQuestion] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(true);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleSubmit = () => {
     if (question.trim() && !disabled) {
@@ -47,6 +50,25 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSubmit, disabled }) => {
   const handleSuggestionClick = (action: string) => {
     onSubmit(action);
     setShowSuggestions(false);
+  };
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const validTypes = ['application/pdf', 'image/png', 'image/jpeg', 'image/jpg'];
+      if (validTypes.includes(file.type)) {
+        onFileUpload(file);
+        setShowSuggestions(false);
+      } else {
+        alert('Please select a PDF or image file (PNG, JPG, JPEG)');
+      }
+      // Reset file input
+      event.target.value = '';
+    }
+  };
+
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
   };
 
   return (
@@ -77,40 +99,65 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSubmit, disabled }) => {
         </div>
       )}
       
-      <div className="relative">
-        <Textarea
-          placeholder="Ask about medical documents or type a message..."
-          className={cn(
-            "min-h-24 overflow-hidden resize-none rounded-xl text-base bg-muted pr-12"
-          )}
-          value={question}
-          onChange={(e) => setQuestion(e.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === "Enter" && !event.shiftKey) {
-              event.preventDefault();
-              if (!disabled) {
-                setShowSuggestions(false);
-                handleSubmit();
-              }
-            }
-          }}
-          rows={3}
-          autoFocus
+      <div className="relative flex gap-2">
+        {/* Hidden file input */}
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleFileSelect}
+          accept=".pdf,.png,.jpg,.jpeg"
+          className="hidden"
         />
-
+        
+        {/* Upload button */}
         <Button
-          className="rounded-full absolute bottom-2 right-2"
-          style={{ 
-            padding: '0.375rem',
-            height: 'fit-content',
-            margin: '0.125rem',
-            border: '1px solid var(--border)'
-          }}
-          onClick={handleSubmit}
-          disabled={question.length === 0 || disabled}
+          variant="outline"
+          size="sm"
+          onClick={handleUploadClick}
+          disabled={disabled}
+          className="flex items-center gap-2 px-3 py-2 h-auto self-end mb-2"
+          title="Upload medical document"
         >
-          <ArrowUpIcon size={14} />
+          <Paperclip className="h-4 w-4" />
+          <span className="hidden sm:inline">Upload</span>
         </Button>
+
+        {/* Text input area */}
+        <div className="relative flex-1">
+          <Textarea
+            placeholder="Ask about medical documents or type a message..."
+            className={cn(
+              "min-h-24 overflow-hidden resize-none rounded-xl text-base bg-muted pr-12"
+            )}
+            value={question}
+            onChange={(e) => setQuestion(e.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" && !event.shiftKey) {
+                event.preventDefault();
+                if (!disabled) {
+                  setShowSuggestions(false);
+                  handleSubmit();
+                }
+              }
+            }}
+            rows={3}
+            autoFocus
+          />
+
+          <Button
+            className="rounded-full absolute bottom-2 right-2"
+            style={{ 
+              padding: '0.375rem',
+              height: 'fit-content',
+              margin: '0.125rem',
+              border: '1px solid var(--border)'
+            }}
+            onClick={handleSubmit}
+            disabled={question.length === 0 || disabled}
+          >
+            <ArrowUpIcon size={14} />
+          </Button>
+        </div>
       </div>
     </div>
   );
