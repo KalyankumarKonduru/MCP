@@ -1,5 +1,5 @@
 import React from 'react';
-import { MessageCircle, Bot as BotIcon } from "lucide-react";
+import { MessageCircle, Bot as BotIcon, FileText } from "lucide-react";
 
 export const Overview: React.FC = () => {
   return (
@@ -16,13 +16,25 @@ export const Overview: React.FC = () => {
           <BotIcon size={44} />
           <span className="text-2xl">+</span>
           <MessageCircle size={44} />
+          <span className="text-2xl">+</span>
+          <FileText size={44} />
         </div>
         <div>
           <h1 className="text-3xl font-bold mb-4">Welcome to MCP Pilot</h1>
           <p className="text-muted-foreground">
-            A lightweight and modern chat interface for MCP and LLM interactions with Markdown support!
+            A lightweight and modern chat interface with medical document processing!
+            <br /><br />
+            <strong>New Features:</strong>
             <br />
-            Start a conversation by typing a message below or choosing from the suggested prompts.
+            • Upload medical documents (PDF, images)
+            <br />
+            • Extract diagnoses, medications, and lab results
+            <br />
+            • Ask questions about patient records
+            <br />
+            • Get AI-powered medical insights
+            <br /><br />
+            Start by uploading a document or typing a message below.
           </p>
         </div>
       </div>

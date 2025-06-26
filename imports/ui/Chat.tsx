@@ -5,6 +5,7 @@ import { Header } from '/client/components/custom/Header';
 import { ChatInput } from '/client/components/custom/ChatInput';
 import { PreviewMessage, ThinkingMessage } from '/client/components/custom/Message';
 import { Overview } from '/client/components/custom/Overview';
+import { DocumentUpload } from '/client/components/custom/DocumentUpload';
 import { useScrollToBottom } from './hooks/useScrollToBottom';
 import { MessagesCollection } from '/imports/api/messages/messages';
 import { v4 as uuidv4 } from 'uuid';
@@ -12,6 +13,8 @@ import { v4 as uuidv4 } from 'uuid';
 export const Chat: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [sessionId] = useState(() => uuidv4());
+  const [currentPatient, setCurrentPatient] = useState<string>('');
+  const [showUpload, setShowUpload] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [messagesContainerRef] = useScrollToBottom<HTMLDivElement>();
 
@@ -28,6 +31,17 @@ export const Chat: React.FC = () => {
   const handleSubmit = async (text: string) => {
     if (!text.trim() || isLoading) return;
 
+    // Check if user is mentioning a patient
+    const patientMatch = text.match(/(?:patient|for)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/i);
+    if (patientMatch) {
+      setCurrentPatient(patientMatch[1]);
+    }
+
+    // Check if user wants to upload a document
+    if (text.toLowerCase().includes('upload') || text.toLowerCase().includes('document')) {
+      setShowUpload(true);
+    }
+
     setIsLoading(true);
 
     try {
@@ -39,7 +53,7 @@ export const Chat: React.FC = () => {
         sessionId
       });
 
-      // Process with MCP/LLM
+      // Process with MCP/LLM (now includes medical context)
       const response = await Meteor.callAsync('mcp.processQuery', text);
 
       // Add assistant message
@@ -68,6 +82,12 @@ export const Chat: React.FC = () => {
     }
   };
 
+  const handleUploadComplete = (result: any) => {
+    console.log('Document uploaded:', result);
+    // Continue the file after upload
+   setShowUpload(false);
+  };
+ 
   return (
     <div className="flex flex-col h-dvh bg-background">
       <Header />
@@ -76,6 +96,17 @@ export const Chat: React.FC = () => {
         ref={messagesContainerRef}
       >
         {messages.length === 0 && <Overview />}
+        
+        {/* Document upload area - shown when needed or at start */}
+        {(showUpload || messages.length === 0) && (
+          <div className="flex justify-center px-4 animate-fade-in">
+            <DocumentUpload 
+              patientName={currentPatient}
+              onUploadComplete={handleUploadComplete}
+            />
+          </div>
+        )}
+ 
         {messages.map((message, index) => (
           <PreviewMessage key={index} message={message} />
         ))}
@@ -93,4 +124,4 @@ export const Chat: React.FC = () => {
       </div>
     </div>
   );
-};
+ };
