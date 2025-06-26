@@ -1,4 +1,3 @@
-import { spawn, ChildProcess } from 'child_process';
 import { Meteor } from 'meteor/meteor';
 
 interface MCPRequest {
@@ -19,175 +18,257 @@ interface MCPResponse {
 }
 
 export class MedicalServerConnection {
-  private process: ChildProcess | null = null;
-  private messageBuffer: string = '';
-  private pendingRequests: Map<string | number, {
-    resolve: (value: any) => void;
-    reject: (error: any) => void;
-  }> = new Map();
+  private baseUrl: string;
+  private sessionId: string | null = null;
   private isInitialized = false;
   private requestId = 1;
 
+  constructor(baseUrl: string = 'http://localhost:3001') {
+    this.baseUrl = baseUrl.replace(/\/$/, ''); // Remove trailing slash
+  }
+
   async connect(): Promise<void> {
-    return new Promise((resolve, reject) => {
-      try {
-        // Get server path from settings or use default
-        const serverPath = Meteor.settings?.private?.MEDICAL_MCP_SERVER_PATH || 
-                          '/Users/kalyankumarkonduru/MCP-Server/dist/index.js';
-        
-        console.log(`📄 Attempting to connect to Medical MCP Server at: ${serverPath}`);
-        
-        // Spawn the MCP server process with stdio mode
-        this.process = spawn('node', [serverPath], {
-          stdio: ['pipe', 'pipe', 'pipe'],
-          env: {
-            ...process.env,
-            MCP_STDIO_MODE: 'true'
-          }
-        });
-
-        // Handle stdout (JSON-RPC responses from server)
-        this.process.stdout?.on('data', (data: Buffer) => {
-          this.handleServerData(data.toString());
-        });
-
-        // Handle stderr (server logs - don't try to parse as JSON)
-        this.process.stderr?.on('data', (data: Buffer) => {
-          const message = data.toString().trim();
-          if (message) {
-            console.log(`MCP Server Log: ${message}`);
-          }
-        });
-
-        // Handle process exit
-        this.process.on('exit', (code) => {
-          console.log(`MCP Server exited with code ${code}`);
-          this.cleanup();
-        });
-
-        // Handle process errors
-        this.process.on('error', (error) => {
-          console.error('MCP Server process error:', error);
-          reject(error);
-        });
-
-        // Initialize the connection with proper MCP protocol
-        setTimeout(async () => {
-          try {
-            await this.sendRequest('initialize', {
-              protocolVersion: '2024-11-05',
-              capabilities: {
-                roots: {
-                  listChanged: false
-                }
-              },
-              clientInfo: {
-                name: 'meteor-medical-client',
-                version: '1.0.0'
-              }
-            });
-
-            // Send initialized notification
-            await this.sendNotification('initialized', {});
-
-            this.isInitialized = true;
-            console.log('✅ Connected to Medical Document MCP Server via stdio');
-            console.log('🏥 Medical document processing features are now available');
-            resolve();
-          } catch (error) {
-            console.error('Failed to initialize MCP connection:', error);
-            reject(error);
-          }
-        }, 1000); // Give server time to start
-
-      } catch (error) {
-        console.error('Failed to start MCP server:', error);
-        reject(error);
-      }
-    });
-  }
-
-  private handleServerData(data: string) {
-    this.messageBuffer += data;
-    
-    // Split by newlines to handle multiple messages
-    const lines = this.messageBuffer.split('\n');
-    this.messageBuffer = lines.pop() || ''; // Keep incomplete line in buffer
-    
-    for (const line of lines) {
-      const trimmedLine = line.trim();
-      if (trimmedLine) {
-        try {
-          const response: MCPResponse = JSON.parse(trimmedLine);
-          this.handleResponse(response);
-        } catch (error) {
-          // Skip non-JSON lines (server logs)
-          console.log('Server output:', trimmedLine);
-        }
-      }
-    }
-  }
-
-  private handleResponse(response: MCPResponse) {
-    const pending = this.pendingRequests.get(response.id);
-    if (pending) {
-      if (response.error) {
-        pending.reject(new Error(response.error.message));
-      } else {
-        pending.resolve(response.result);
-      }
-      this.pendingRequests.delete(response.id);
-    }
-  }
-
-  private sendRequest(method: string, params: any): Promise<any> {
-    return new Promise((resolve, reject) => {
-      if (!this.process?.stdin) {
-        reject(new Error('MCP Server not connected'));
-        return;
-      }
-
-      const id = this.requestId++;
-      const request: MCPRequest = {
-        jsonrpc: '2.0',
-        method,
-        params,
-        id
-      };
-
-      this.pendingRequests.set(id, { resolve, reject });
+    try {
+      console.log(`📄 Connecting to Medical MCP Server at: ${this.baseUrl}`);
       
-      // Send request to server
-      const requestStr = JSON.stringify(request) + '\n';
-      this.process.stdin.write(requestStr);
+      // Test if server is running
+      const healthCheck = await this.checkServerHealth();
+      if (!healthCheck.ok) {
+        throw new Error(`MCP Server not responding at ${this.baseUrl}. Please ensure it's running in HTTP mode.`);
+      }
 
-      // Set timeout for requests
-      setTimeout(() => {
-        if (this.pendingRequests.has(id)) {
-          this.pendingRequests.delete(id);
-          reject(new Error(`Request timeout for method: ${method}`));
+      // Initialize the connection with proper MCP protocol using Streamable HTTP
+      const initResult = await this.sendRequest('initialize', {
+        protocolVersion: '2024-11-05',
+        capabilities: {
+          roots: {
+            listChanged: false
+          }
+        },
+        clientInfo: {
+          name: 'meteor-medical-client',
+          version: '1.0.0'
         }
-      }, 30000); // 30 second timeout
+      });
+
+      console.log('📋 MCP Initialize result:', initResult);
+
+      // Send initialized notification
+      await this.sendNotification('initialized', {});
+
+      // Test by listing tools
+      const toolsResult = await this.sendRequest('tools/list', {});
+      console.log(`✅ MCP Streamable HTTP Connection successful! Found ${toolsResult.tools?.length || 0} tools`);
+      
+      if (toolsResult.tools) {
+        console.log('📋 Available tools:');
+        toolsResult.tools.forEach((tool: any, index: number) => {
+          console.log(`   ${index + 1}. ${tool.name} - ${tool.description}`);
+        });
+      }
+
+      this.isInitialized = true;
+      
+    } catch (error) {
+      console.error('❌ Failed to connect to MCP Server via Streamable HTTP:', error);
+      throw error;
+    }
+  }
+
+  private async checkServerHealth(): Promise<{ ok: boolean; error?: string }> {
+    try {
+      const response = await fetch(`${this.baseUrl}/health`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        signal: AbortSignal.timeout(5000) // 5 second timeout
+      });
+
+      if (response.ok) {
+        const health = await response.json();
+        console.log('✅ MCP Server health check passed:', health);
+        return { ok: true };
+      } else {
+        return { ok: false, error: `Server returned ${response.status}` };
+      }
+    } catch (error: any) {
+      return { ok: false, error: error.message };
+    }
+  }
+
+  private async sendRequest(method: string, params: any): Promise<any> {
+    if (!this.baseUrl) {
+      throw new Error('MCP Server not connected');
+    }
+
+    const id = this.requestId++;
+    const request: MCPRequest = {
+      jsonrpc: '2.0',
+      method,
+      params,
+      id
+    };
+
+    try {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json, text/event-stream', // Streamable HTTP: Must accept both JSON and SSE
+      };
+
+      // Add session ID if we have one (Streamable HTTP session management)
+      if (this.sessionId) {
+        headers['mcp-session-id'] = this.sessionId;
+      }
+
+      console.log(`🔄 Sending Streamable HTTP request: ${method}`, { id, sessionId: this.sessionId });
+
+      const response = await fetch(`${this.baseUrl}/mcp`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(request),
+        signal: AbortSignal.timeout(30000) // 30 second timeout
+      });
+
+      // Extract session ID from response headers if present (Streamable HTTP session management)
+      const responseSessionId = response.headers.get('mcp-session-id');
+      if (responseSessionId && !this.sessionId) {
+        this.sessionId = responseSessionId;
+        console.log('📋 Received session ID:', this.sessionId);
+      }
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${response.statusText}. Response: ${errorText}`);
+      }
+
+      // Check content type - Streamable HTTP should return JSON for most responses
+      const contentType = response.headers.get('content-type');
+      
+      // Handle SSE upgrade (optional in Streamable HTTP for streaming responses)
+      if (contentType && contentType.includes('text/event-stream')) {
+        console.log('📡 Server upgraded to SSE for streaming response');
+        return await this.handleStreamingResponse(response);
+      }
+
+      // Standard JSON response
+      if (!contentType || !contentType.includes('application/json')) {
+        const responseText = await response.text();
+        console.error('❌ Unexpected content type:', contentType);
+        console.error('❌ Response text:', responseText.substring(0, 200));
+        throw new Error(`Expected JSON response but got ${contentType}`);
+      }
+
+      const result: MCPResponse = await response.json();
+
+      if (result.error) {
+        throw new Error(`MCP error ${result.error.code}: ${result.error.message}`);
+      }
+
+      console.log(`✅ Streamable HTTP request ${method} successful`);
+      return result.result;
+      
+    } catch (error: any) {
+      console.error(`❌ Streamable HTTP request failed for method ${method}:`, error);
+      throw error;
+    }
+  }
+
+  private async handleStreamingResponse(response: Response): Promise<any> {
+    // Handle SSE streaming response (optional part of Streamable HTTP)
+    return new Promise((resolve, reject) => {
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let result: any = null;
+
+      const processChunk = async () => {
+        try {
+          const { done, value } = await reader!.read();
+          
+          if (done) {
+            if (result) {
+              resolve(result);
+            } else {
+              reject(new Error('No result received from streaming response'));
+            }
+            return;
+          }
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || ''; // Keep incomplete line in buffer
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              try {
+                const data = line.slice(6); // Remove 'data: ' prefix
+                if (data === '[DONE]') {
+                  resolve(result);
+                  return;
+                }
+                
+                const parsed = JSON.parse(data);
+                if (parsed.result) {
+                  result = parsed.result;
+                } else if (parsed.error) {
+                  reject(new Error(parsed.error.message));
+                  return;
+                }
+              } catch (e) {
+                // Skip invalid JSON lines
+                console.warn('Failed to parse SSE data:', data);
+              }
+            }
+          }
+
+          // Continue reading
+          processChunk();
+        } catch (error) {
+          reject(error);
+        }
+      };
+
+      processChunk();
+
+      // Timeout for streaming responses
+      setTimeout(() => {
+        reader?.cancel();
+        reject(new Error('Streaming response timeout'));
+      }, 60000); // 60 second timeout for streaming
     });
   }
 
-  private sendNotification(method: string, params: any): Promise<void> {
-    return new Promise((resolve, reject) => {
-      if (!this.process?.stdin) {
-        reject(new Error('MCP Server not connected'));
-        return;
-      }
+  private async sendNotification(method: string, params: any): Promise<void> {
+    const notification = {
+      jsonrpc: '2.0',
+      method,
+      params
+    };
 
-      const notification = {
-        jsonrpc: '2.0',
-        method,
-        params
+    try {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json, text/event-stream',
       };
 
-      const notificationStr = JSON.stringify(notification) + '\n';
-      this.process.stdin.write(notificationStr);
-      resolve();
-    });
+      if (this.sessionId) {
+        headers['mcp-session-id'] = this.sessionId;
+      }
+
+      const response = await fetch(`${this.baseUrl}/mcp`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(notification),
+        signal: AbortSignal.timeout(10000)
+      });
+
+      if (!response.ok) {
+        console.warn(`Notification ${method} failed: ${response.status}`);
+      }
+    } catch (error) {
+      console.warn(`Notification ${method} failed:`, error);
+    }
   }
 
   async listTools(): Promise<any> {
@@ -210,20 +291,30 @@ export class MedicalServerConnection {
   }
 
   disconnect() {
-    this.cleanup();
-  }
-
-  private cleanup() {
-    if (this.process) {
-      this.process.kill();
-      this.process = null;
+    // For Streamable HTTP, we can optionally send a DELETE request to clean up the session
+    if (this.sessionId) {
+      try {
+        fetch(`${this.baseUrl}/mcp`, {
+          method: 'DELETE',
+          headers: {
+            'mcp-session-id': this.sessionId,
+            'Content-Type': 'application/json'
+          }
+        }).catch(() => {
+          // Ignore errors on disconnect
+        });
+      } catch (error) {
+        // Ignore errors on disconnect
+      }
     }
-    this.pendingRequests.clear();
+    
+    this.sessionId = null;
     this.isInitialized = false;
+    console.log('📋 Disconnected from MCP Server');
   }
 }
 
-// Medical operations implementation with correct tool names
+// Medical operations implementation for Streamable HTTP transport
 export interface MedicalDocumentOperations {
   uploadDocument(file: Buffer, filename: string, mimeType: string, metadata: any): Promise<any>;
   searchDocuments(query: string, options?: any): Promise<any>;
@@ -242,7 +333,7 @@ export interface MedicalDocumentOperations {
 
 export function createMedicalOperations(connection: MedicalServerConnection): MedicalDocumentOperations {
   return {
-    // New tool methods
+    // New tool methods using the exact tool names from your server
     async uploadDocument(file: Buffer, filename: string, mimeType: string, metadata: any) {
       const result = await connection.callTool('uploadDocument', {
         title: filename,
@@ -253,7 +344,16 @@ export function createMedicalOperations(connection: MedicalServerConnection): Me
           size: file.length
         }
       });
-      return JSON.parse(result.content[0].text);
+      
+      // Parse the result if it's in the content array format
+      if (result.content && result.content[0] && result.content[0].text) {
+        try {
+          return JSON.parse(result.content[0].text);
+        } catch (e) {
+          return result;
+        }
+      }
+      return result;
     },
 
     async searchDocuments(query: string, options: any = {}) {
@@ -263,7 +363,15 @@ export function createMedicalOperations(connection: MedicalServerConnection): Me
         threshold: options.threshold || 0.7,
         filter: options.filter || {}
       });
-      return JSON.parse(result.content[0].text);
+      
+      if (result.content && result.content[0] && result.content[0].text) {
+        try {
+          return JSON.parse(result.content[0].text);
+        } catch (e) {
+          return result;
+        }
+      }
+      return result;
     },
 
     async listDocuments(options: any = {}) {
@@ -272,7 +380,15 @@ export function createMedicalOperations(connection: MedicalServerConnection): Me
         offset: options.offset || 0,
         filter: options.filter || {}
       });
-      return JSON.parse(result.content[0].text);
+      
+      if (result.content && result.content[0] && result.content[0].text) {
+        try {
+          return JSON.parse(result.content[0].text);
+        } catch (e) {
+          return result;
+        }
+      }
+      return result;
     },
 
     async extractMedicalEntities(text: string, documentId?: string) {
@@ -280,12 +396,28 @@ export function createMedicalOperations(connection: MedicalServerConnection): Me
         text,
         documentId
       });
-      return JSON.parse(result.content[0].text);
+      
+      if (result.content && result.content[0] && result.content[0].text) {
+        try {
+          return JSON.parse(result.content[0].text);
+        } catch (e) {
+          return result;
+        }
+      }
+      return result;
     },
 
     async findSimilarCases(criteria: any) {
       const result = await connection.callTool('findSimilarCases', criteria);
-      return JSON.parse(result.content[0].text);
+      
+      if (result.content && result.content[0] && result.content[0].text) {
+        try {
+          return JSON.parse(result.content[0].text);
+        } catch (e) {
+          return result;
+        }
+      }
+      return result;
     },
 
     async analyzePatientHistory(patientId: string, options: any = {}) {
@@ -294,7 +426,15 @@ export function createMedicalOperations(connection: MedicalServerConnection): Me
         analysisType: options.analysisType || 'summary',
         dateRange: options.dateRange
       });
-      return JSON.parse(result.content[0].text);
+      
+      if (result.content && result.content[0] && result.content[0].text) {
+        try {
+          return JSON.parse(result.content[0].text);
+        } catch (e) {
+          return result;
+        }
+      }
+      return result;
     },
 
     async getMedicalInsights(query: string, context: any = {}) {
@@ -303,40 +443,61 @@ export function createMedicalOperations(connection: MedicalServerConnection): Me
         context,
         limit: context.limit || 5
       });
-      return JSON.parse(result.content[0].text);
+      
+      if (result.content && result.content[0] && result.content[0].text) {
+        try {
+          return JSON.parse(result.content[0].text);
+        } catch (e) {
+          return result;
+        }
+      }
+      return result;
     },
 
     // Legacy compatibility methods
     async extractText(documentId: string) {
-      const result = await connection.callTool('extract_text', { documentId });
-      return JSON.parse(result.content[0].text);
+      // This might not exist as a separate tool, try to get document content
+      const result = await connection.callTool('listDocuments', {
+        filter: { _id: documentId },
+        limit: 1
+      });
+      
+      if (result.content && result.content[0] && result.content[0].text) {
+        try {
+          const parsed = JSON.parse(result.content[0].text);
+          if (parsed.documents && parsed.documents[0]) {
+            return {
+              success: true,
+              extractedText: parsed.documents[0].content,
+              confidence: 100
+            };
+          }
+        } catch (e) {
+          // fallback
+        }
+      }
+      
+      throw new Error('Text extraction not supported - use document content from upload result');
     },
 
     async searchByDiagnosis(patientIdentifier: string, diagnosisQuery?: string, sessionId?: string) {
-      const result = await connection.callTool('search_by_diagnosis', {
-        patientIdentifier,
-        diagnosisQuery,
-        sessionId
+      return await this.searchDocuments(diagnosisQuery || patientIdentifier, {
+        filter: { patientId: patientIdentifier },
+        limit: 10
       });
-      return JSON.parse(result.content[0].text);
     },
 
     async semanticSearch(query: string, patientId?: string) {
-      const result = await connection.callTool('semantic_search', {
-        query,
-        patientId,
+      return await this.searchDocuments(query, {
+        filter: patientId ? { patientId } : {},
         limit: 5
       });
-      return JSON.parse(result.content[0].text);
     },
 
     async getPatientSummary(patientIdentifier: string) {
-      const result = await connection.callTool('get_patient_summary', {
-        patientIdentifier,
-        summaryType: 'detailed'
+      return await this.analyzePatientHistory(patientIdentifier, {
+        analysisType: 'summary'
       });
-      return JSON.parse(result.content[0].text);
     }
   };
 }
-
