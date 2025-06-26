@@ -11,14 +11,24 @@ interface ChatInputProps {
 
 const suggestedActions = [
   {
-    title: "Explain me what can you do ?",
-    label: "With all the parameters",
-    action: "Explain me what can you do? With all the parameters",
+    title: "Upload medical document",
+    label: "PDF or image file",
+    action: "I'd like to upload a medical document",
   },
   {
-    title: "Give me a Mars photo",
-    label: "of earth date 24th Feb 2024",
-    action: "Give me a Mars photo of earth date 24th Feb 2024",
+    title: "Search patient diagnosis",
+    label: "Find specific conditions",
+    action: "What diagnoses does the patient have?",
+  },
+  {
+    title: "Review medications",
+    label: "Current prescriptions",
+    action: "Show me the patient's current medications",
+  },
+  {
+    title: "Lab results summary",
+    label: "Recent test results",
+    action: "What are the latest lab results?",
   },
 ];
 
@@ -69,7 +79,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSubmit, disabled }) => {
       
       <div className="relative">
         <Textarea
-          placeholder="Send a message..."
+          placeholder="Ask about medical documents or type a message..."
           className={cn(
             "min-h-24 overflow-hidden resize-none rounded-xl text-base bg-muted pr-12"
           )}

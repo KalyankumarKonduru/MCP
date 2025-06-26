@@ -19,7 +19,7 @@ export const Header: React.FC = () => {
           >
             <Menu className="h-4 w-4" />
           </Button>
-          <h1 className="text-lg font-semibold">MCP Pilot</h1>
+          <h1 className="text-lg font-semibold">MCP Chat</h1>
         </div>
         
         <div className="flex items-center gap-2">

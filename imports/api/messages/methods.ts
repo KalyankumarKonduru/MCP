@@ -1,5 +1,5 @@
 import { Meteor } from 'meteor/meteor';
-import { check } from 'meteor/check';
+import { check, Match } from 'meteor/check';
 import { MessagesCollection, Message } from './messages';
 import { MCPClientManager } from '/imports/api/mcp/mcpClientManager';
 
@@ -26,7 +26,8 @@ Meteor.methods({
       }
       
       try {
-        return await mcpManager.processQuery(query);
+        const sessionId = this.connection?.id || 'default';
+        return await mcpManager.processQueryWithMedicalContext(query, { sessionId });
       } catch (error) {
         console.error('MCP processing error:', error);
         return 'I encountered an error while processing your request. Please try again.';
@@ -82,5 +83,114 @@ Meteor.methods({
     if (ozwellKey) providers.push('ozwell');
     
     return providers;
+  },
+
+  // Medical document methods
+  async 'medical.uploadDocument'(fileData: {
+    filename: string;
+    content: string; // Base64
+    mimeType: string;
+    patientName?: string;
+  }) {
+    check(fileData, {
+      filename: String,
+      content: String,
+      mimeType: String,
+      patientName: Match.Maybe(String)
+    });
+
+    if (this.isSimulation) {
+      return { success: true, documentId: 'sim-123' };
+    }
+
+    const mcpManager = MCPClientManager.getInstance();
+    
+    try {
+      const medical = mcpManager.getMedicalOperations();
+      const sessionId = this.connection?.id || 'default';
+      
+      const result = await medical.uploadDocument(
+        Buffer.from(fileData.content, 'base64'),
+        fileData.filename,
+        fileData.mimeType,
+        {
+          patientName: fileData.patientName,
+          sessionId,
+          uploadedBy: this.userId || 'anonymous',
+          uploadDate: new Date()
+        }
+      );
+      
+      return result;
+    } catch (error) {
+      console.error('Document upload error:', error);
+      throw new Meteor.Error('upload-failed', 'Failed to upload document. Medical server may be offline.');
+    }
+  },
+
+  async 'medical.processDocument'(documentId: string) {
+    check(documentId, String);
+    
+    if (this.isSimulation) {
+      return { textExtraction: { success: true }, medicalEntities: { success: true } };
+    }
+    
+    const mcpManager = MCPClientManager.getInstance();
+    
+    try {
+      const medical = mcpManager.getMedicalOperations();
+      
+      // Extract text
+      const textResult = await medical.extractText(documentId);
+      
+      // Extract medical entities
+      const entitiesResult = await medical.extractMedicalEntities(documentId);
+      
+      return {
+        textExtraction: textResult,
+        medicalEntities: entitiesResult
+      };
+    } catch (error) {
+      console.error('Document processing error:', error);
+      throw new Meteor.Error('processing-failed', 'Failed to process document');
+    }
+  },
+
+  async 'medical.searchDiagnosis'(patientIdentifier: string, diagnosisQuery?: string) {
+    check(patientIdentifier, String);
+    check(diagnosisQuery, Match.Maybe(String));
+    
+    if (this.isSimulation) {
+      return { results: [] };
+    }
+    
+    const mcpManager = MCPClientManager.getInstance();
+    const sessionId = this.connection?.id || 'default';
+    
+    try {
+      const medical = mcpManager.getMedicalOperations();
+      return await medical.searchByDiagnosis(patientIdentifier, diagnosisQuery, sessionId);
+    } catch (error) {
+      console.error('Diagnosis search error:', error);
+      throw new Meteor.Error('search-failed', 'Failed to search diagnoses');
+    }
+  },
+
+  async 'medical.getPatientSummary'(patientIdentifier: string) {
+    check(patientIdentifier, String);
+    
+    if (this.isSimulation) {
+      return { patient: patientIdentifier, totalDocuments: 0 };
+    }
+    
+    const mcpManager = MCPClientManager.getInstance();
+    
+    try {
+      const medical = mcpManager.getMedicalOperations();
+      return await medical.getPatientSummary(patientIdentifier);
+    } catch (error) {
+      console.error('Patient summary error:', error);
+      throw new Meteor.Error('summary-failed', 'Failed to get patient summary');
+    }
   }
 });

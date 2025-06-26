@@ -1,7 +1,0 @@
-{
-    "private": {
-      "OZWELL_API_KEY": "OZWELL_API_KEY",
-      "ANTHROPIC_API_KEY": "ANTHROPIC_API_KEY",
-      "OZWELL_ENDPOINT": "https://ai.bluehive.com/api/v1/completion"
-    }
-  }

@@ -36,6 +36,7 @@ Meteor.startup(async () => {
       return;
     }
 
+    // Initialize main MCP client for LLM
     await mcpManager.initialize({
       provider: provider as 'anthropic' | 'ozwell',
       apiKey: apiKey,
@@ -48,6 +49,29 @@ Meteor.startup(async () => {
     if (anthropicKey && ozwellKey) {
       console.log('🔄 Both providers available - you can switch between them in the chat');
     }
+
+    // Connect to medical MCP server via stdio
+    const medicalServerPath = settings?.MEDICAL_MCP_SERVER_PATH || process.env.MEDICAL_MCP_SERVER_PATH;
+    
+    if (!medicalServerPath) {
+      console.warn('⚠️  Medical MCP Server path not configured.');
+      console.warn('   Add MEDICAL_MCP_SERVER_PATH to your settings.json to enable medical document features.');
+      console.warn('   Example: "MEDICAL_MCP_SERVER_PATH": "/path/to/MCP-Server/dist/index.js"');
+    } else {
+      try {
+        console.log(`📄 Attempting to connect to Medical MCP Server at: ${medicalServerPath}`);
+        await mcpManager.connectToMedicalServer();
+        console.log('✅ Connected to Medical Document MCP Server via stdio');
+        console.log('🏥 Medical document processing features are now available');
+      } catch (error) {
+        console.warn('⚠️  Medical MCP Server connection failed:', error);
+        console.warn('   Document processing features will be disabled.');
+        console.warn('   Make sure to:');
+        console.warn('   1. Build the MCP server: cd /path/to/MCP-Server && npm run build');
+        console.warn('   2. Update MEDICAL_MCP_SERVER_PATH in settings.json');
+      }
+    }
+    
   } catch (error) {
     console.error('❌ Failed to initialize MCP client:', error);
     console.warn('⚠️  Server will run without AI capabilities');
@@ -59,6 +83,19 @@ process.on('SIGINT', () => {
   console.log('\n🛑 Shutting down server...');
   const mcpManager = MCPClientManager.getInstance();
   mcpManager.shutdown().then(() => {
+    console.log('👋 Server shutdown complete');
     process.exit(0);
+  }).catch((error) => {
+    console.error('Error during shutdown:', error);
+    process.exit(1);
   });
+});
+
+// Handle uncaught errors
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
 });
