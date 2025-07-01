@@ -1,3 +1,4 @@
+// imports/ui/Chat.tsx - Complete file
 import React, { useState, useRef } from 'react';
 import { Meteor } from 'meteor/meteor';
 import { useTracker } from 'meteor/react-meteor-data';
@@ -30,10 +31,13 @@ export const Chat: React.FC = () => {
   const handleSubmit = async (text: string) => {
     if (!text.trim() || isLoading) return;
 
+    console.log(`💬 User submitted: "${text}"`);
+
     // Check if user is mentioning a patient
     const patientMatch = text.match(/(?:patient|for)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/i);
     if (patientMatch) {
       setCurrentPatient(patientMatch[1]);
+      console.log(`👤 Detected patient: ${patientMatch[1]}`);
     }
 
     setIsLoading(true);
@@ -47,8 +51,12 @@ export const Chat: React.FC = () => {
         sessionId
       });
 
-      // Process with MCP/LLM (now includes medical context)
+      console.log('📤 Calling mcp.processQuery...');
+
+      // Process with enhanced MCP processing
       const response = await Meteor.callAsync('mcp.processQuery', text);
+
+      console.log('📥 Received response:', response);
 
       // Add assistant message
       await Meteor.callAsync('messages.insert', {
@@ -63,7 +71,7 @@ export const Chat: React.FC = () => {
       // Add error message
       try {
         await Meteor.callAsync('messages.insert', {
-          content: 'Sorry, I encountered an error while processing your request. Please try again.',
+          content: 'I encountered an error while processing your request. Please try again or contact support if the issue persists.',
           role: 'assistant',
           timestamp: new Date(),
           sessionId
@@ -112,14 +120,39 @@ export const Chat: React.FC = () => {
       
       console.log('Process result:', processResult);
 
-      // Add success message
-      const successMessage = `✅ Document "${file.name}" uploaded and processed successfully!\n\n` +
-        `📊 **Processing Summary:**\n` +
-        `- Document ID: ${uploadResult.documentId}\n` +
-        `- Text extracted: ${processResult.textExtraction?.extractedText?.length || 0} characters\n` +
-        `- Medical entities found: ${processResult.medicalEntities?.entities?.length || 0}\n` +
-        `- Processing confidence: ${Math.round(processResult.textExtraction?.confidence || 0)}%\n\n` +
-        `You can now ask questions about this document!`;
+      // Create a comprehensive success message
+      let successMessage = `✅ **Document "${file.name}" uploaded and processed successfully!**\n\n`;
+      
+      // Add processing details
+      successMessage += `📊 **Processing Summary:**\n`;
+      successMessage += `• Document ID: ${uploadResult.documentId}\n`;
+      
+      if (processResult.textExtraction) {
+        successMessage += `• Text extracted: ${processResult.textExtraction.extractedText?.length || 0} characters\n`;
+        successMessage += `• Extraction confidence: ${Math.round(processResult.textExtraction.confidence || 0)}%\n`;
+      }
+      
+      if (processResult.medicalEntities) {
+        successMessage += `• Medical entities found: ${processResult.medicalEntities.entities?.length || 0}\n`;
+        
+        // Show a few example entities
+        if (processResult.medicalEntities.entities && processResult.medicalEntities.entities.length > 0) {
+          const topEntities = processResult.medicalEntities.entities
+            .slice(0, 5)
+            .map((e: any) => `${e.text} (${e.label})`)
+            .join(', ');
+          successMessage += `• Key terms found: ${topEntities}\n`;
+        }
+      }
+      
+      if (currentPatient && currentPatient !== 'Unknown Patient') {
+        successMessage += `• Assigned to patient: ${currentPatient}\n`;
+      }
+      
+      successMessage += `\n💡 **You can now:**\n`;
+      successMessage += `• Search for this document using terms like "${file.name.split('.')[0]}"\n`;
+      successMessage += `• Ask questions about the medical content\n`;
+      successMessage += `• Search for specific conditions, medications, or procedures mentioned in the document`;
 
       await Meteor.callAsync('messages.insert', {
         content: successMessage,
@@ -131,21 +164,25 @@ export const Chat: React.FC = () => {
     } catch (error: any) {
       console.error('Upload error:', error);
       
-      let errorMessage = 'Failed to upload document. ';
+      let errorMessage = `❌ **Failed to upload document "${file.name}"**\n\n`;
       
       if (error.error === 'upload-failed') {
-        errorMessage += 'The medical server may be offline or not configured properly.';
+        errorMessage += `**Error:** The medical server may be offline or not configured properly.\n`;
+        errorMessage += `**Solution:** Please contact your administrator to check the MCP server connection.`;
       } else if (error.error === 'processing-failed') {
-        errorMessage += 'The document was uploaded but processing failed.';
+        errorMessage += `**Error:** The document was uploaded but processing failed.\n`;
+        errorMessage += `**Solution:** Try uploading a different file format or check if the document contains readable text.`;
       } else if (error.reason) {
-        errorMessage += error.reason;
+        errorMessage += `**Error:** ${error.reason}\n`;
+        errorMessage += `**Solution:** Please check the file format and try again.`;
       } else {
-        errorMessage += 'Please check the file format and try again.';
+        errorMessage += `**Error:** ${error.message || 'Unknown error occurred'}\n`;
+        errorMessage += `**Solution:** Please try again or contact support if the issue persists.`;
       }
 
       // Add error message
       await Meteor.callAsync('messages.insert', {
-        content: `❌ ${errorMessage}`,
+        content: errorMessage,
         role: 'assistant',
         timestamp: new Date(),
         sessionId

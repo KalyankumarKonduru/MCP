@@ -1,5 +1,6 @@
+// client/components/custom/Overview.tsx - Complete file
 import React from 'react';
-import { MessageCircle, Bot as BotIcon, FileText } from "lucide-react";
+import { MessageCircle, Bot as BotIcon, FileText, Search, Upload } from "lucide-react";
 
 export const Overview: React.FC = () => {
   return (
@@ -15,27 +16,63 @@ export const Overview: React.FC = () => {
         <div className="flex flex-row justify-center gap-4 items-center">
           <BotIcon size={44} />
           <span className="text-2xl">+</span>
-          <MessageCircle size={44} />
-          <span className="text-2xl">+</span>
           <FileText size={44} />
+          <span className="text-2xl">+</span>
+          <Search size={44} />
         </div>
         <div>
           <h1 className="text-3xl font-bold mb-4">Welcome to MCP Pilot</h1>
-          <p className="text-muted-foreground">
-            A lightweight and modern chat interface with medical document processing!
-            <br /><br />
-            <strong>New Features:</strong>
-            <br />
-            • Upload medical documents (PDF, images)
-            <br />
-            • Extract diagnoses, medications, and lab results
-            <br />
-            • Ask questions about patient records
-            <br />
-            • Get AI-powered medical insights
-            <br /><br />
-            Start by uploading a document or typing a message below.
+          <p className="text-muted-foreground mb-6">
+            Your intelligent medical document assistant powered by AI and semantic search.
           </p>
+          
+          <div className="text-left space-y-4">
+            <div className="border rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Upload className="h-5 w-5 text-blue-500" />
+                <h3 className="font-semibold">Upload Documents</h3>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Upload medical documents (PDF, images) and I'll extract text, identify medical entities, and make them searchable.
+              </p>
+            </div>
+            
+            <div className="border rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Search className="h-5 w-5 text-green-500" />
+                <h3 className="font-semibold">Smart Search</h3>
+              </div>
+              <p className="text-sm text-muted-foreground mb-2">
+                Search for medical information using natural language:
+              </p>
+              <div className="text-xs text-muted-foreground space-y-1">
+                <div>• "search for john" - Find patient records</div>
+                <div>• "find diabetes diagnosis" - Search conditions</div>
+                <div>• "show me lab results" - Find specific document types</div>
+              </div>
+            </div>
+            
+            <div className="border rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <MessageCircle className="h-5 w-5 text-purple-500" />
+                <h3 className="font-semibold">Ask Questions</h3>
+              </div>
+              <p className="text-sm text-muted-foreground mb-2">
+                Ask questions about your medical documents:
+              </p>
+              <div className="text-xs text-muted-foreground space-y-1">
+                <div>• "What medications is John taking?"</div>
+                <div>• "Summarize the lab results"</div>
+                <div>• "What conditions were diagnosed?"</div>
+              </div>
+            </div>
+          </div>
+          
+          <div className="mt-6 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+            <p className="text-sm text-blue-700 dark:text-blue-300">
+              💡 <strong>Tip:</strong> Start by uploading a medical document, then try searching for specific information within it.
+            </p>
+          </div>
         </div>
       </div>
     </div>

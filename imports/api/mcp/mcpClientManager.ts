@@ -1,3 +1,4 @@
+// imports/api/mcp/mcpClientManager.ts - Complete file
 import Anthropic from '@anthropic-ai/sdk';
 import { MedicalServerConnection, MedicalDocumentOperations, createMedicalOperations } from './medicalServerConnection';
 
@@ -171,7 +172,7 @@ export class MCPClientManager {
     }
   }
 
-  // Process query with medical context and automatic tool calling
+  // Enhanced query processing with automatic tool calling and context
   public async processQueryWithMedicalContext(
     query: string,
     context?: { documentId?: string; patientId?: string; sessionId?: string }
@@ -183,35 +184,81 @@ export class MCPClientManager {
     try {
       let enhancedQuery = query;
       let medicalContext = '';
+      let toolResults: any[] = [];
 
-      // If query mentions medical terms or patient, search for context
+      console.log(`🧠 Processing query with medical context: "${query}"`);
+
+      // 1. DETECT AND EXECUTE SEARCH QUERIES AUTOMATICALLY
+      if (this.isDirectSearchQuery(query)) {
+        try {
+          const searchTerms = this.extractSearchTerms(query);
+          console.log(`🔍 Auto-executing search for: "${searchTerms}"`);
+          
+          const searchResult = await this.callMCPTool('searchDocuments', {
+            query: searchTerms,
+            limit: 5,
+            threshold: 0.3,
+            searchType: 'hybrid',
+            filter: context?.patientId ? { patientId: context.patientId } : {}
+          });
+          
+          toolResults.push({
+            tool: 'searchDocuments',
+            query: searchTerms,
+            result: searchResult
+          });
+          
+          // Format results and return immediately for search queries
+          return this.formatSearchResults(searchResult, query, searchTerms);
+          
+        } catch (error) {
+          console.error('Auto-search failed:', error);
+          return `I tried to search for "${query}" but encountered an error. Please try rephrasing your search or ensure medical documents have been uploaded to the system.`;
+        }
+      }
+
+      // 2. GATHER MEDICAL CONTEXT for general queries
       if (this.medicalOperations && this.isMedicalQuery(query)) {
         try {
-          // Use the searchDocuments method
+          console.log(`🏥 Gathering medical context for query`);
           const searchResult = await this.medicalOperations.searchDocuments(query, {
             filter: context?.patientId ? { patientId: context.patientId } : {},
-            limit: 3
+            limit: 3,
+            threshold: 0.4
           });
           
           if (searchResult.success && searchResult.results && searchResult.results.length > 0) {
-            medicalContext = `\n\nRelevant medical context:\n${JSON.stringify(searchResult.results[0], null, 2)}`;
+            medicalContext = `\n\n**Relevant Medical Information Found:**\n${this.summarizeSearchResults(searchResult.results)}`;
+            toolResults.push({
+              tool: 'contextSearch',
+              result: searchResult
+            });
           }
         } catch (error) {
           console.error('Error fetching medical context:', error);
         }
       }
 
-      // Check if query requires specific MCP tools
-      const toolsContext = this.buildToolsContext(query);
-      if (toolsContext) {
-        enhancedQuery += `\n\nAvailable MCP Tools: ${toolsContext}`;
+      // 3. BUILD ENHANCED PROMPT with context and available tools
+      if (toolResults.length > 0 && toolResults[0].tool === 'contextSearch') {
+        enhancedQuery = `User Query: ${query}\n\nI found some relevant medical information that might help answer this question:\n${medicalContext}\n\nPlease provide a helpful answer based on this medical context and your knowledge.`;
+      } else {
+        enhancedQuery = query + medicalContext;
       }
 
-      // Process with LLM
+      // Add available tools context for the LLM
+      const toolsContext = this.buildToolsContext(query);
+      if (toolsContext) {
+        enhancedQuery += `\n\nNote: I have access to medical document tools if you need me to search for specific information: ${toolsContext}`;
+      }
+
+      // 4. PROCESS WITH LLM
+      console.log(`🤖 Sending to LLM provider: ${this.config.provider}`);
+      
       if (this.config.provider === 'anthropic' && this.anthropic) {
-        return await this.processWithAnthropic(enhancedQuery + medicalContext);
+        return await this.processWithAnthropic(enhancedQuery);
       } else if (this.config.provider === 'ozwell') {
-        return await this.processWithOzwell(enhancedQuery + medicalContext);
+        return await this.processWithOzwell(enhancedQuery);
       }
       
       throw new Error('No LLM provider configured');
@@ -219,6 +266,47 @@ export class MCPClientManager {
       console.error('Error processing query with medical context:', error);
       throw error;
     }
+  }
+
+  // Helper methods for query processing
+  private isDirectSearchQuery(query: string): boolean {
+    const searchPatterns = [
+      /^search\s+for\s+/i,
+      /^find\s+/i,
+      /^look\s+for\s+/i,
+      /^show\s+me\s+/i,
+      /^list\s+/i,
+      /documents?\s+about/i,
+      /records?\s+for/i,
+      /files?\s+for/i
+    ];
+    
+    return searchPatterns.some(pattern => pattern.test(query));
+  }
+
+  private isMedicalQuery(query: string): boolean {
+    const medicalKeywords = [
+      'diagnosis', 'medication', 'prescription', 'lab', 'test', 'result',
+      'patient', 'medical', 'health', 'treatment', 'symptom', 'condition',
+      'blood', 'pressure', 'glucose', 'cholesterol', 'vital', 'sign',
+      'doctor', 'physician', 'hospital', 'clinic', 'surgery', 'procedure'
+    ];
+    
+    const lowerQuery = query.toLowerCase();
+    return medicalKeywords.some(keyword => lowerQuery.includes(keyword));
+  }
+
+  private extractSearchTerms(query: string): string {
+    return query
+      .replace(/^(search\s+for|find|look\s+for|show\s+me|list|documents?\s+about|records?\s+for|files?\s+for)\s*/i, '')
+      .replace(/\b(patient|documents?|records?|files?)\b/gi, '')
+      .trim() || query;
+  }
+
+  private summarizeSearchResults(results: any[]): string {
+    return results.slice(0, 2).map(result => 
+      `- **${result.title}**: ${result.content?.substring(0, 150)}...`
+    ).join('\n');
   }
 
   private buildToolsContext(query: string): string {
@@ -249,25 +337,108 @@ export class MCPClientManager {
     return '';
   }
 
-  private isMedicalQuery(query: string): boolean {
-    const medicalKeywords = [
-      'diagnosis', 'medication', 'prescription', 'lab', 'test', 'result',
-      'patient', 'medical', 'health', 'treatment', 'symptom', 'condition',
-      'blood', 'pressure', 'glucose', 'cholesterol', 'vital', 'sign',
-      'doctor', 'physician', 'hospital', 'clinic', 'surgery', 'procedure'
-    ];
-    
-    const lowerQuery = query.toLowerCase();
-    return medicalKeywords.some(keyword => lowerQuery.includes(keyword));
+  private formatSearchResults(searchResult: any, originalQuery: string, searchTerms: string): string {
+    try {
+      console.log(`🔧 Formatting search results for query: "${originalQuery}"`);
+      
+      // Parse the MCP tool result
+      let resultData;
+      if (searchResult?.content?.[0]?.text) {
+        try {
+          resultData = JSON.parse(searchResult.content[0].text);
+        } catch (parseError) {
+          console.error('Failed to parse search result JSON:', parseError);
+          return `I found some results but couldn't process them properly. Please try a different search.`;
+        }
+      } else {
+        resultData = searchResult;
+      }
+      
+      console.log(`📊 Parsed result data:`, resultData);
+      
+      if (!resultData?.success) {
+        const errorMsg = resultData?.error || 'Unknown error occurred';
+        return `I couldn't search the medical documents: ${errorMsg}. Please try uploading some documents first.`;
+      }
+      
+      const results = resultData.results || [];
+      console.log(`📈 Found ${results.length} results`);
+      
+      if (results.length === 0) {
+        return `I searched for "${searchTerms}" but didn't find any matching medical documents.\n\n**Suggestions:**\n• Try different search terms (specific conditions, medications, or patient names)\n• Upload more medical documents to expand the database\n• Use broader search terms\n• Check if the documents contain the information you're looking for`;
+      }
+      
+      // Format the results in a user-friendly way
+      let response = `**Found ${results.length} medical document${results.length > 1 ? 's' : ''} for "${searchTerms}":**\n\n`;
+      
+      results.forEach((result: any, index: number) => {
+        response += `**${index + 1}. ${result.title}**\n`;
+        
+        // Add relevance score
+        if (result.score !== undefined) {
+          const percentage = Math.round(result.score * 100);
+          response += `📊 **Relevance:** ${percentage}%\n`;
+        }
+        
+        // Add patient information
+        if (result.metadata?.patientId && result.metadata.patientId !== 'Unknown Patient') {
+          response += `👤 **Patient:** ${result.metadata.patientId}\n`;
+        }
+        
+        // Add document type
+        if (result.metadata?.documentType) {
+          const type = result.metadata.documentType.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase());
+          response += `📋 **Type:** ${type}\n`;
+        }
+        
+        // Add date
+        if (result.metadata?.uploadedAt) {
+          const date = new Date(result.metadata.uploadedAt).toLocaleDateString();
+          response += `📅 **Date:** ${date}\n`;
+        }
+        
+        // Add content preview
+        if (result.content) {
+          const preview = result.content.substring(0, 250).replace(/\n+/g, ' ').trim();
+          response += `📄 **Content:** ${preview}${result.content.length > 250 ? '...' : ''}\n`;
+        }
+        
+        // Add relevant medical entities if available
+        if (result.relevantEntities && result.relevantEntities.length > 0) {
+          const entities = result.relevantEntities
+            .slice(0, 5)
+            .map((e: any) => `${e.text} (${e.label.toLowerCase()})`)
+            .join(', ');
+          response += `🏷️ **Key Medical Terms:** ${entities}\n`;
+        }
+        
+        response += '\n---\n\n';
+      });
+      
+      // Add helpful suggestions
+      response += `💡 **What you can do next:**\n`;
+      response += `• Ask specific questions about these documents\n`;
+      response += `• Search for specific conditions, medications, or symptoms\n`;
+      response += `• Upload additional medical documents\n`;
+      response += `• Request summaries or analysis of the found documents`;
+      
+      return response;
+      
+    } catch (error) {
+      console.error('Error formatting search results:', error);
+      return `I found some medical documents but had trouble formatting the results. Please try your search again.`;
+    }
   }
 
   private async processWithAnthropic(query: string): Promise<string> {
     const systemPrompt = `You are a medical AI assistant with access to MCP (Model Context Protocol) tools for medical document processing. 
 
+When users ask about medical information, provide clear, helpful responses. If medical context is provided in the query, use it to give specific answers. Always be helpful and provide accurate information while being clear about limitations.
+
 Available MCP Tools:
 ${this.availableTools.map(tool => `- ${tool.name}: ${tool.description}`).join('\n')}
 
-When users ask about medical documents, patient data, or need medical analysis, you can suggest using these MCP tools. Always be helpful and provide accurate medical information while being clear about limitations.`;
+Respond in a friendly, professional manner and format your responses for easy reading.`;
 
     const response = await this.anthropic!.messages.create({
       model: 'claude-3-5-sonnet-20241022',
@@ -286,7 +457,7 @@ When users ask about medical documents, patient data, or need medical analysis, 
   private async processWithOzwell(query: string): Promise<string> {
     const endpoint = this.config?.ozwellEndpoint || 'https://ai.bluehive.com/api/v1/completion';
     
-    const systemPrompt = `You are a medical AI assistant with access to MCP tools for medical document processing. Available tools: ${this.availableTools.map(t => t.name).join(', ')}`;
+    const systemPrompt = `You are a medical AI assistant with access to MCP tools for medical document processing. Available tools: ${this.availableTools.map(t => t.name).join(', ')}. Provide clear, helpful responses about medical information.`;
     
     try {
       const response = await fetch(endpoint, {
