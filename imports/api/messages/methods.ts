@@ -1,8 +1,10 @@
-// imports/api/messages/methods.ts - Complete file with fixes
+// imports/api/messages/methods.ts - Complete file with session support
 import { Meteor } from 'meteor/meteor';
 import { check, Match } from 'meteor/check';
 import { MessagesCollection, Message } from './messages';
+import { SessionsCollection } from '../sessions/sessions';
 import { MCPClientManager } from '/imports/api/mcp/mcpClientManager';
+import { ContextManager } from '../context/contextManager';
 
 // Helper functions (moved outside of Meteor.methods)
 function isSearchQuery(query: string): boolean {
@@ -132,8 +134,8 @@ function formatSearchResults(searchResult: any, originalQuery: string, searchTer
     response += `💡 **What you can do next:**\n`;
     response += `• Ask specific questions about these documents\n`;
     response += `• Search for specific conditions, medications, or symptoms\n`;
-    response += `• Upload additional medical documents to expand the database\n`;
-    response += `• Ask for summaries or analysis of the found documents`;
+    response += `• Upload additional medical documents\n`;
+    response += `• Request summaries or analysis of the found documents`;
     
     return response;
     
@@ -143,7 +145,7 @@ function formatSearchResults(searchResult: any, originalQuery: string, searchTer
   }
 }
 
-async function handleSearchQuery(query: string, mcpManager: any): Promise<string> {
+async function handleSearchQuery(query: string, mcpManager: any, sessionId?: string): Promise<string> {
   try {
     console.log(`🔍 Processing search query: "${query}"`);
     
@@ -151,15 +153,42 @@ async function handleSearchQuery(query: string, mcpManager: any): Promise<string
     const searchTerms = extractSearchTerms(query);
     console.log(`📝 Extracted search terms: "${searchTerms}"`);
     
+    // Get context if sessionId provided
+    let filter = {};
+    if (sessionId) {
+      const context = await ContextManager.getContext(sessionId);
+      if (context.patientContext) {
+        filter = { patientId: context.patientContext };
+      }
+    }
+    
     // Call the search tool directly
     const searchResult = await mcpManager.callMCPTool('searchDocuments', {
       query: searchTerms,
       limit: 5,
       threshold: 0.3,
-      searchType: 'hybrid'
+      searchType: 'hybrid',
+      filter
     });
     
     console.log(`📊 Search result:`, searchResult);
+    
+    // Update session with found documents
+    if (sessionId && searchResult?.content?.[0]?.text) {
+      try {
+        const resultData = JSON.parse(searchResult.content[0].text);
+        if (resultData.results && resultData.results.length > 0) {
+          const documentIds = resultData.results.map((r: any) => r.id).filter(Boolean);
+          await SessionsCollection.updateAsync(sessionId, {
+            $addToSet: {
+              'metadata.documentIds': { $each: documentIds }
+            }
+          });
+        }
+      } catch (e) {
+        console.error('Error updating session with document IDs:', e);
+      }
+    }
     
     // Process and format the results for the user
     return formatSearchResults(searchResult, query, searchTerms);
@@ -169,7 +198,7 @@ async function handleSearchQuery(query: string, mcpManager: any): Promise<string
   }
 }
 
-async function handleDocumentQuery(query: string, mcpManager: any): Promise<string> {
+async function handleDocumentQuery(query: string, mcpManager: any, sessionId?: string): Promise<string> {
   try {
     console.log(`📋 Processing document query: "${query}"`);
     
@@ -187,15 +216,22 @@ async function handleDocumentQuery(query: string, mcpManager: any): Promise<stri
       // If we found relevant documents, format them nicely
       const formattedResults = formatSearchResults(searchResult, query, searchTerms);
       
-      // Then get the LLM to provide additional context
-      const llmPrompt = `Based on this search query "${query}" and these document results:\n\n${formattedResults}\n\nPlease provide a helpful summary and answer any specific questions about the medical information found.`;
+      // Build context if sessionId provided
+      let contextPrompt = '';
+      if (sessionId) {
+        const context = await ContextManager.getContext(sessionId);
+        contextPrompt = ContextManager.buildContextPrompt(context);
+      }
       
-      const llmResponse = await mcpManager.processQueryWithMedicalContext(llmPrompt);
+      // Then get the LLM to provide additional context
+      const llmPrompt = `${contextPrompt}\n\nBased on this search query "${query}" and these document results:\n\n${formattedResults}\n\nPlease provide a helpful summary and answer any specific questions about the medical information found.`;
+      
+      const llmResponse = await mcpManager.processQueryWithMedicalContext(llmPrompt, { sessionId });
       
       return llmResponse;
     } else {
       // Fallback to regular processing
-      return await mcpManager.processQueryWithMedicalContext(query);
+      return await mcpManager.processQueryWithMedicalContext(query, { sessionId });
     }
   } catch (error) {
     console.error('Document query error:', error);
@@ -212,11 +248,37 @@ Meteor.methods({
       sessionId: String
     });
 
-    return await MessagesCollection.insertAsync(messageData);
+    const messageId = await MessagesCollection.insertAsync(messageData);
+    
+    // Update context if session exists
+    if (messageData.sessionId) {
+      await ContextManager.updateContext(messageData.sessionId, {
+        ...messageData,
+        _id: messageId
+      });
+      
+      // Update session
+      await SessionsCollection.updateAsync(messageData.sessionId, {
+        $set: {
+          lastMessage: messageData.content.substring(0, 100),
+          updatedAt: new Date()
+        },
+        $inc: { messageCount: 1 }
+      });
+      
+      // Auto-generate title after first user message
+      const session = await SessionsCollection.findOneAsync(messageData.sessionId);
+      if (session && session.messageCount === 1 && messageData.role === 'user') {
+        Meteor.call('sessions.generateTitle', messageData.sessionId);
+      }
+    }
+    
+    return messageId;
   },
 
-  async 'mcp.processQuery'(query: string) {
+  async 'mcp.processQuery'(query: string, sessionId?: string) {
     check(query, String);
+    check(sessionId, Match.Maybe(String));
     
     if (!this.isSimulation) {
       const mcpManager = MCPClientManager.getInstance();
@@ -226,20 +288,50 @@ Meteor.methods({
       }
       
       try {
-        const sessionId = this.connection?.id || 'default';
+        // Get context if sessionId provided
+        let contextPrompt = '';
+        let contextData = {};
+        
+        if (sessionId) {
+          const context = await ContextManager.getContext(sessionId);
+          contextPrompt = ContextManager.buildContextPrompt(context);
+          contextData = {
+            sessionId,
+            patientId: context.patientContext,
+            documentIds: context.documentContext
+          };
+          
+          console.log(`🧠 Processing with context - Tokens: ${context.totalTokens}, Messages: ${context.recentMessages.length}`);
+        }
         
         // Check if this looks like a search query and handle it specially
         if (isSearchQuery(query)) {
-          return await handleSearchQuery(query, mcpManager);
+          return await handleSearchQuery(query, mcpManager, sessionId);
         }
         
         // Check if asking about documents/patients
         if (isDocumentQuery(query)) {
-          return await handleDocumentQuery(query, mcpManager);
+          return await handleDocumentQuery(query, mcpManager, sessionId);
+        }
+        
+        // Build enhanced query with context
+        let enhancedQuery = query;
+        if (contextPrompt && sessionId) {
+          const context = await ContextManager.getContext(sessionId);
+          if (context.recentMessages.length > 1) {
+            enhancedQuery = `${contextPrompt}\n\nCurrent Query: ${query}`;
+          }
         }
         
         // Otherwise use regular LLM processing with enhanced medical context
-        return await mcpManager.processQueryWithMedicalContext(query, { sessionId });
+        const response = await mcpManager.processQueryWithMedicalContext(enhancedQuery, contextData);
+        
+        // Extract and update context
+        if (sessionId) {
+          await extractAndUpdateContext(query, response, sessionId);
+        }
+        
+        return response;
       } catch (error) {
         console.error('MCP processing error:', error);
         return 'I encountered an error while processing your request. Please try again.';
@@ -303,12 +395,14 @@ Meteor.methods({
     content: string; // Base64
     mimeType: string;
     patientName?: string;
+    sessionId?: string;
   }) {
     check(fileData, {
       filename: String,
       content: String,
       mimeType: String,
-      patientName: Match.Maybe(String)
+      patientName: Match.Maybe(String),
+      sessionId: Match.Maybe(String)
     });
 
     console.log(`📤 Uploading document: ${fileData.filename} (${fileData.mimeType})`);
@@ -331,7 +425,6 @@ Meteor.methods({
     try {
       // Check if medical operations are available
       const medical = mcpManager.getMedicalOperations();
-      const sessionId = this.connection?.id || 'default';
       
       console.log('🔧 Using medical operations to upload document...');
       
@@ -341,13 +434,26 @@ Meteor.methods({
         fileData.mimeType,
         {
           patientName: fileData.patientName,
-          sessionId,
+          sessionId: fileData.sessionId || this.connection?.id || 'default',
           uploadedBy: this.userId || 'anonymous',
           uploadDate: new Date()
         }
       );
       
       console.log('✅ Document uploaded successfully:', result);
+      
+      // Update session with document ID if sessionId provided
+      if (fileData.sessionId && result.documentId) {
+        await SessionsCollection.updateAsync(fileData.sessionId, {
+          $addToSet: {
+            'metadata.documentIds': result.documentId
+          },
+          $set: {
+            'metadata.patientId': fileData.patientName || 'Unknown Patient'
+          }
+        });
+      }
+      
       return result;
       
     } catch (error) {
@@ -361,8 +467,9 @@ Meteor.methods({
     }
   },
 
-  async 'medical.processDocument'(documentId: string) {
+  async 'medical.processDocument'(documentId: string, sessionId?: string) {
     check(documentId, String);
+    check(sessionId, Match.Maybe(String));
     
     console.log(`🔄 Processing document: ${documentId}`);
     
@@ -417,20 +524,20 @@ Meteor.methods({
     }
   },
 
-  async 'medical.searchDiagnosis'(patientIdentifier: string, diagnosisQuery?: string) {
+  async 'medical.searchDiagnosis'(patientIdentifier: string, diagnosisQuery?: string, sessionId?: string) {
     check(patientIdentifier, String);
     check(diagnosisQuery, Match.Maybe(String));
+    check(sessionId, Match.Maybe(String));
     
     if (this.isSimulation) {
       return { results: [] };
     }
     
     const mcpManager = MCPClientManager.getInstance();
-    const sessionId = this.connection?.id || 'default';
     
     try {
       const medical = mcpManager.getMedicalOperations();
-      return await medical.searchByDiagnosis(patientIdentifier, diagnosisQuery, sessionId);
+      return await medical.searchByDiagnosis(patientIdentifier, diagnosisQuery, sessionId || 'default');
     } catch (error) {
       console.error('Diagnosis search error:', error);
       throw new Meteor.Error('search-failed', 'Failed to search diagnoses');
@@ -488,3 +595,49 @@ Meteor.methods({
     }
   }
 });
+
+// Helper function to extract and update context
+async function extractAndUpdateContext(
+  query: string, 
+  response: string, 
+  sessionId: string
+): Promise<void> {
+  // Extract patient name
+  const patientMatch = query.match(/(?:patient|for)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/i);
+  if (patientMatch) {
+    await SessionsCollection.updateAsync(sessionId, {
+      $set: { 'metadata.patientId': patientMatch[1] }
+    });
+  }
+  
+  // Extract medical terms from response
+  const medicalTerms = extractMedicalTermsFromResponse(response);
+  if (medicalTerms.length > 0) {
+    await SessionsCollection.updateAsync(sessionId, {
+      $addToSet: {
+        'metadata.tags': { $each: medicalTerms }
+      }
+    });
+  }
+}
+
+function extractMedicalTermsFromResponse(response: string): string[] {
+  const medicalPatterns = [
+    /\b(?:diagnosed with|diagnosis of)\s+([^,.]+)/gi,
+    /\b(?:prescribed|medication)\s+([^,.]+)/gi,
+    /\b(?:treatment for|treating)\s+([^,.]+)/gi
+  ];
+  
+  const terms = new Set<string>();
+  
+  medicalPatterns.forEach(pattern => {
+    let match;
+    while ((match = pattern.exec(response)) !== null) {
+      if (match[1]) {
+        terms.add(match[1].trim().toLowerCase());
+      }
+    }
+  });
+  
+  return Array.from(terms).slice(0, 10);
+}

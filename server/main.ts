@@ -2,9 +2,12 @@ import { Meteor } from 'meteor/meteor';
 import { MCPClientManager } from '/imports/api/mcp/mcpClientManager';
 import '/imports/api/messages/methods';
 import '/imports/api/messages/publications';
+import '/imports/api/sessions/methods';
+import '/imports/api/sessions/publications';
+import './startup-sessions';
 
 Meteor.startup(async () => {
-  console.log('Starting MCP Pilot server...');
+  console.log('Starting MCP Pilot server with session management...');
   
   // Initialize MCP Client
   const mcpManager = MCPClientManager.getInstance();
@@ -45,6 +48,7 @@ Meteor.startup(async () => {
     
     console.log('✅ Server started successfully with MCP integration');
     console.log(`🤖 Using ${provider.toUpperCase()} as the default AI provider`);
+    console.log('💾 Session management enabled with Atlas MongoDB');
     
     if (anthropicKey && ozwellKey) {
       console.log('🔄 Both providers available - you can switch between them in the chat');
@@ -86,6 +90,11 @@ Meteor.startup(async () => {
 process.on('SIGINT', () => {
   console.log('\n🛑 Shutting down server...');
   const mcpManager = MCPClientManager.getInstance();
+  
+  // Clear all context before shutdown
+  const { ContextManager } = require('/imports/api/context/contextManager');
+  ContextManager.clearAllContexts();
+  
   mcpManager.shutdown().then(() => {
     console.log('👋 Server shutdown complete');
     process.exit(0);

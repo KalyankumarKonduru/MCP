@@ -1,5 +1,5 @@
-// imports/ui/Chat.tsx - Complete file
-import React, { useState, useRef } from 'react';
+// imports/ui/Chat.tsx - Complete file with session management
+import React, { useState, useRef, useEffect } from 'react';
 import { Meteor } from 'meteor/meteor';
 import { useTracker } from 'meteor/react-meteor-data';
 import { Header } from '/client/components/custom/Header';
@@ -8,17 +8,64 @@ import { PreviewMessage, ThinkingMessage } from '/client/components/custom/Messa
 import { Overview } from '/client/components/custom/Overview';
 import { useScrollToBottom } from './hooks/useScrollToBottom';
 import { MessagesCollection } from '/imports/api/messages/messages';
-import { v4 as uuidv4 } from 'uuid';
+import { SessionsCollection } from '/imports/api/sessions/sessions';
 
 export const Chat: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
-  const [sessionId] = useState(() => uuidv4());
+  const [sessionId, setSessionId] = useState<string>('');
   const [currentPatient, setCurrentPatient] = useState<string>('');
   const [isUploading, setIsUploading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [messagesContainerRef] = useScrollToBottom<HTMLDivElement>();
 
+  // Initialize or load session on mount
+  useEffect(() => {
+    const initSession = async () => {
+      try {
+        // Try to load from localStorage first
+        const savedSessionId = localStorage.getItem('currentSessionId');
+        
+        if (savedSessionId) {
+          // Verify session still exists
+          const session = await Meteor.callAsync('sessions.get', savedSessionId).catch(() => null);
+          if (session) {
+            setSessionId(savedSessionId);
+            // Load patient context from session
+            if (session.metadata?.patientId) {
+              setCurrentPatient(session.metadata.patientId);
+            }
+            return;
+          }
+        }
+        
+        // Check for active session
+        const { sessions } = await Meteor.callAsync('sessions.list', 1, 0);
+        const activeSession = sessions.find((s: any) => s.isActive);
+        
+        if (activeSession) {
+          setSessionId(activeSession._id);
+          localStorage.setItem('currentSessionId', activeSession._id);
+          if (activeSession.metadata?.patientId) {
+            setCurrentPatient(activeSession.metadata.patientId);
+          }
+        } else {
+          // Create new session
+          const newSessionId = await Meteor.callAsync('sessions.create');
+          setSessionId(newSessionId);
+          localStorage.setItem('currentSessionId', newSessionId);
+        }
+      } catch (error) {
+        console.error('Error initializing session:', error);
+      }
+    };
+    
+    initSession();
+  }, []);
+
+  // Subscribe to messages for current session
   const messages = useTracker(() => {
+    if (!sessionId) return [];
+    
     const handle = Meteor.subscribe('messages', sessionId);
     if (!handle.ready()) return [];
     
@@ -28,8 +75,18 @@ export const Chat: React.FC = () => {
     ).fetch();
   }, [sessionId]);
 
+  // Subscribe to current session details
+  const currentSession = useTracker(() => {
+    if (!sessionId) return null;
+    
+    const handle = Meteor.subscribe('session.details', sessionId);
+    if (!handle.ready()) return null;
+    
+    return SessionsCollection.findOne(sessionId);
+  }, [sessionId]);
+
   const handleSubmit = async (text: string) => {
-    if (!text.trim() || isLoading) return;
+    if (!text.trim() || isLoading || !sessionId) return;
 
     console.log(`💬 User submitted: "${text}"`);
 
@@ -38,12 +95,18 @@ export const Chat: React.FC = () => {
     if (patientMatch) {
       setCurrentPatient(patientMatch[1]);
       console.log(`👤 Detected patient: ${patientMatch[1]}`);
+      
+      // Update session with patient context
+      await Meteor.callAsync('sessions.updateMetadata', sessionId, {
+        ...currentSession?.metadata,
+        patientId: patientMatch[1]
+      });
     }
 
     setIsLoading(true);
 
     try {
-      // Add user message
+      // Add user message with session context
       await Meteor.callAsync('messages.insert', {
         content: text,
         role: 'user',
@@ -51,12 +114,12 @@ export const Chat: React.FC = () => {
         sessionId
       });
 
-      console.log('📤 Calling mcp.processQuery...');
+      console.log('📤 Calling mcp.processQuery with session...');
 
-      // Process with enhanced MCP processing
-      const response = await Meteor.callAsync('mcp.processQuery', text);
+      // Process with session context
+      const response = await Meteor.callAsync('mcp.processQuery', text, sessionId);
 
-      console.log('📥 Received response:', response);
+      console.log('📥 Received response');
 
       // Add assistant message
       await Meteor.callAsync('messages.insert', {
@@ -85,7 +148,7 @@ export const Chat: React.FC = () => {
   };
 
   const handleFileUpload = async (file: File) => {
-    if (isUploading || isLoading) return;
+    if (isUploading || isLoading || !sessionId) return;
 
     console.log('Starting file upload:', file.name, file.type, file.size);
     setIsUploading(true);
@@ -103,20 +166,21 @@ export const Chat: React.FC = () => {
       const base64Content = await fileToBase64(file);
       console.log('File converted to base64, length:', base64Content.length);
 
-      // Upload document
+      // Upload document with session context
       console.log('Calling medical.uploadDocument...');
       const uploadResult = await Meteor.callAsync('medical.uploadDocument', {
         filename: file.name,
         content: base64Content,
         mimeType: file.type,
-        patientName: currentPatient || 'Unknown Patient'
+        patientName: currentPatient || 'Unknown Patient',
+        sessionId
       });
 
       console.log('Upload result:', uploadResult);
 
       // Process document
       console.log('Calling medical.processDocument...');
-      const processResult = await Meteor.callAsync('medical.processDocument', uploadResult.documentId);
+      const processResult = await Meteor.callAsync('medical.processDocument', uploadResult.documentId, sessionId);
       
       console.log('Process result:', processResult);
 
@@ -205,10 +269,64 @@ export const Chat: React.FC = () => {
       reader.onerror = error => reject(error);
     });
   };
+
+  const handleNewChat = async () => {
+    try {
+      const newSessionId = await Meteor.callAsync('sessions.create');
+      setSessionId(newSessionId);
+      localStorage.setItem('currentSessionId', newSessionId);
+      setCurrentPatient(''); // Reset patient context
+      console.log('✅ Created new chat session:', newSessionId);
+    } catch (error) {
+      console.error('Error creating new chat:', error);
+    }
+  };
+
+  const handleSelectChat = async (selectedSessionId: string) => {
+    try {
+      setSessionId(selectedSessionId);
+      localStorage.setItem('currentSessionId', selectedSessionId);
+      
+      // Set as active session
+      await Meteor.callAsync('sessions.setActive', selectedSessionId);
+      
+      // Load patient context from session
+      const session = await Meteor.callAsync('sessions.get', selectedSessionId);
+      if (session?.metadata?.patientId) {
+        setCurrentPatient(session.metadata.patientId);
+      } else {
+        setCurrentPatient('');
+      }
+      
+      console.log('✅ Switched to chat session:', selectedSessionId);
+    } catch (error) {
+      console.error('Error selecting chat:', error);
+    }
+  };
+
+  const handleDeleteChat = async (chatId: string) => {
+    try {
+      await Meteor.callAsync('sessions.delete', chatId);
+      
+      // If deleted current session, create new one
+      if (chatId === sessionId) {
+        await handleNewChat();
+      }
+      
+      console.log('✅ Deleted chat session:', chatId);
+    } catch (error) {
+      console.error('Error deleting chat:', error);
+    }
+  };
  
   return (
     <div className="flex flex-col h-dvh bg-background">
-      <Header />
+      <Header 
+        onNewChat={handleNewChat}
+        onSelectChat={handleSelectChat}
+        onDeleteChat={handleDeleteChat}
+        currentSessionId={sessionId}
+      />
       <div
         className="flex flex-col gap-6 flex-1 overflow-y-scroll pt-4"
         ref={messagesContainerRef}
@@ -216,7 +334,7 @@ export const Chat: React.FC = () => {
         {messages.length === 0 && <Overview />}
         
         {messages.map((message, index) => (
-          <PreviewMessage key={index} message={message} />
+          <PreviewMessage key={message._id || index} message={message} />
         ))}
         
         {(isLoading || isUploading) && <ThinkingMessage />}
@@ -230,7 +348,7 @@ export const Chat: React.FC = () => {
         <ChatInput
           onSubmit={handleSubmit}
           onFileUpload={handleFileUpload}
-          disabled={isLoading || isUploading}
+          disabled={isLoading || isUploading || !sessionId}
         />
       </div>
     </div>
