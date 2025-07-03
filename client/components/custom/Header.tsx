@@ -81,7 +81,7 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <>
       <header className="header">
-        <div className="flex items-center space-x-1 sm:space-x-2">
+        <div className="flex items-center space-x-2">
           <Button
             variant="outline"
             size="sm"
@@ -91,17 +91,6 @@ export const Header: React.FC<HeaderProps> = ({
             <Menu className="h-4 w-4" />
           </Button>
           <h1 className="text-lg font-semibold">MCP Chat</h1>
-          
-          {/* Quick new chat button */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onNewChat}
-            title="Start new chat"
-            className="hidden sm:flex"
-          >
-            <Plus className="h-4 w-4" />
-          </Button>
         </div>
         
         <div className="flex items-center gap-2">

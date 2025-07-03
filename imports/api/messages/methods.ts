@@ -268,8 +268,10 @@ Meteor.methods({
       
       // Auto-generate title after first user message
       const session = await SessionsCollection.findOneAsync(messageData.sessionId);
-      if (session && session.messageCount === 1 && messageData.role === 'user') {
-        Meteor.call('sessions.generateTitle', messageData.sessionId);
+      if (session && session.messageCount <= 2 && messageData.role === 'user') {
+        Meteor.setTimeout(() => {
+          Meteor.call('sessions.generateTitle', messageData.sessionId);
+        }, 100);
       }
     }
     

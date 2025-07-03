@@ -9,7 +9,7 @@ Meteor.methods({
     check(metadata, Match.Maybe(Object));
 
     const session: Omit<ChatSession, '_id'> = {
-      title: title || `Chat ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}`,
+      title: title || 'New Chat',
       userId: this.userId || undefined,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -152,16 +152,27 @@ Meteor.methods({
     
     // Get first few messages
     const messages = await MessagesCollection.find(
-      { sessionId },
+      { sessionId, role: 'user' },
       { limit: 3, sort: { timestamp: 1 } }
     ).fetchAsync();
     
     if (messages.length > 0) {
       // Use first user message as basis for title
-      const userMessage = messages.find(m => m.role === 'user');
-      if (userMessage) {
-        const title = userMessage.content.substring(0, 60) + 
-                     (userMessage.content.length > 60 ? '...' : '');
+      const firstUserMessage = messages[0];
+      if (firstUserMessage) {
+        // Clean up the message for a better title
+        let title = firstUserMessage.content
+          .replace(/^(search for|find|look for|show me)\s+/i, '') // Remove common prefixes
+          .replace(/[?!.]$/, '') // Remove ending punctuation
+          .trim();
+        
+        // Limit length
+        if (title.length > 50) {
+          title = title.substring(0, 50).trim() + '...';
+        }
+        
+        // Capitalize first letter
+        title = title.charAt(0).toUpperCase() + title.slice(1);
         
         await SessionsCollection.updateAsync(sessionId, {
           $set: { 
