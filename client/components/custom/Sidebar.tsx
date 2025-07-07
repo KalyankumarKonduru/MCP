@@ -116,51 +116,57 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   <div
                     key={session._id}
                     className={cn(
-                      "group relative",
+                      "group relative border rounded-lg transition-all",
+                      session._id === currentSessionId ? "bg-secondary border-primary" : "hover:bg-accent",
                       deletingId === session._id && "opacity-50"
                     )}
                   >
                     <Button
-                      variant={session._id === currentSessionId ? "secondary" : "ghost"}
-                      className="w-full justify-start gap-2 pr-10 text-left"
+                      variant="ghost"
+                      className="w-full justify-start gap-2 pr-12 text-left h-auto py-3 px-3"
                       onClick={() => {
                         onSelectChat?.(session._id!);
                         onClose();
                       }}
                       disabled={deletingId === session._id}
                     >
-                      <MessageCircle className="h-4 w-4 flex-shrink-0" />
-                      <div className="flex-1 min-w-0">
+                      <MessageCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                      <div className="flex-1 min-w-0 space-y-1">
                         <div className="font-medium truncate">
                           {session.title}
                         </div>
-                        <div className="text-xs text-muted-foreground flex items-center gap-2">
-                          <span className="flex items-center gap-1">
+                        <div className="text-xs text-muted-foreground space-y-1">
+                          <div className="flex items-center gap-2">
                             <Clock className="h-3 w-3" />
-                            {formatDate(session.updatedAt)}
-                          </span>
-                          {session.metadata?.patientId && (
-                            <span className="flex items-center gap-1">
-                              <User className="h-3 w-3" />
-                              {session.metadata.patientId}
-                            </span>
+                            <span>{formatDate(session.updatedAt)}</span>
+                            {session.metadata?.patientId && (
+                              <>
+                                <span>•</span>
+                                <span className="flex items-center gap-1">
+                                  <User className="h-3 w-3" />
+                                  {session.metadata.patientId}
+                                </span>
+                              </>
+                            )}
+                          </div>
+                          {session.messageCount > 0 && (
+                            <div>{session.messageCount} message{session.messageCount !== 1 ? 's' : ''}</div>
                           )}
                         </div>
-                        {session.messageCount > 0 && (
-                          <div className="text-xs text-muted-foreground">
-                            {session.messageCount} message{session.messageCount !== 1 ? 's' : ''}
-                          </div>
-                        )}
                       </div>
                     </Button>
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 p-0"
+                      className={cn(
+                        "absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 p-0",
+                        "opacity-0 group-hover:opacity-100 transition-opacity",
+                        "hover:bg-destructive hover:text-destructive-foreground"
+                      )}
                       onClick={(e) => handleDeleteChat(e, session._id!)}
                       disabled={deletingId === session._id}
                     >
-                      <Trash2 className="h-3 w-3" />
+                      <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
                 ))

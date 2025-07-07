@@ -1,4 +1,3 @@
-// imports/api/messages/methods.ts - Complete file with session support
 import { Meteor } from 'meteor/meteor';
 import { check, Match } from 'meteor/check';
 import { MessagesCollection, Message } from './messages';

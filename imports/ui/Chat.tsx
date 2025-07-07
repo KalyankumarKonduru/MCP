@@ -1,4 +1,3 @@
-// imports/ui/Chat.tsx - Complete file with session management
 import React, { useState, useRef, useEffect } from 'react';
 import { Meteor } from 'meteor/meteor';
 import { useTracker } from 'meteor/react-meteor-data';

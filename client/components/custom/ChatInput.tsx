@@ -72,9 +72,9 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSubmit, onFileUpload, di
   };
 
   return (
-    <div className="relative w-full flex flex-col gap-4">
+    <div className="relative w-full flex flex-col gap-4 chat-input-container">
       {showSuggestions && (
-        <div className="hidden md:grid sm:grid-cols-2 gap-2 w-full">
+        <div className="hidden md:grid sm:grid-cols-2 gap-2 w-full suggestion-actions">
           {suggestedActions.map((suggestedAction, index) => (
             <div
               key={index}
@@ -86,10 +86,14 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSubmit, onFileUpload, di
               <Button
                 variant="ghost"
                 onClick={() => handleSuggestionClick(suggestedAction.action)}
-                className="text-left border rounded-xl px-4 py-3.5 text-sm flex-1 gap-1 sm:flex-col w-full h-auto justify-start items-start"
+                className={cn(
+                  "text-left border border-border rounded-xl px-4 py-3.5 text-sm flex-1 gap-1 sm:flex-col w-full h-auto justify-start items-start",
+                  "bg-card text-card-foreground hover:bg-accent hover:text-accent-foreground",
+                  "transition-colors duration-200 suggestion-card"
+                )}
                 style={{ height: 'auto' }}
               >
-                <span className="font-medium">{suggestedAction.title}</span>
+                <span className="font-medium text-foreground">{suggestedAction.title}</span>
                 <span className="text-muted-foreground">
                   {suggestedAction.label}
                 </span>
@@ -127,7 +131,9 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSubmit, onFileUpload, di
           <Textarea
             placeholder="Ask about medical documents or type a message..."
             className={cn(
-              "min-h-24 overflow-hidden resize-none rounded-xl text-base bg-muted pr-12"
+              "min-h-24 overflow-hidden resize-none rounded-xl text-base pr-12",
+              "bg-muted border-border text-foreground placeholder:text-muted-foreground",
+              "focus-visible:border-ring transition-colors duration-200"
             )}
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
@@ -145,7 +151,11 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSubmit, onFileUpload, di
           />
 
           <Button
-            className="rounded-full absolute bottom-2 right-2"
+            className={cn(
+              "rounded-full absolute bottom-2 right-2",
+              "bg-primary text-primary-foreground hover:bg-primary/90",
+              "transition-colors duration-200"
+            )}
             style={{ 
               padding: '0.375rem',
               height: 'fit-content',
