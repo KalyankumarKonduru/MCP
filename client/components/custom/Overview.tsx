@@ -31,7 +31,7 @@ export const Overview: React.FC = () => {
           </p>
           
           <div className="text-left space-y-4">
-            <div className="border border-border rounded-lg p-4 bg-card text-card-foreground overview-card transition-colors duration-200">
+            <div className="rounded-lg p-4 bg-card text-card-foreground overview-card transition-colors duration-200">
               <div className="flex items-center gap-2 mb-2">
                 <Upload className="h-5 w-5 text-blue-500 icon" />
                 <h3 className="font-semibold text-foreground">Upload Documents</h3>
@@ -41,7 +41,7 @@ export const Overview: React.FC = () => {
               </p>
             </div>
             
-            <div className="border border-border rounded-lg p-4 bg-card text-card-foreground overview-card transition-colors duration-200">
+            <div className="rounded-lg p-4 bg-card text-card-foreground overview-card transition-colors duration-200">
               <div className="flex items-center gap-2 mb-2">
                 <Search className="h-5 w-5 text-green-500 icon" />
                 <h3 className="font-semibold text-foreground">Smart Search</h3>
@@ -56,7 +56,7 @@ export const Overview: React.FC = () => {
               </div>
             </div>
             
-            <div className="border border-border rounded-lg p-4 bg-card text-card-foreground overview-card transition-colors duration-200">
+            <div className="rounded-lg p-4 bg-card text-card-foreground overview-card transition-colors duration-200">
               <div className="flex items-center gap-2 mb-2">
                 <MessageCircle className="h-5 w-5 text-purple-500 icon" />
                 <h3 className="font-semibold text-foreground">Ask Questions</h3>
@@ -72,7 +72,7 @@ export const Overview: React.FC = () => {
             </div>
           </div>
           
-          <div className="mt-6 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-border tip-box transition-colors duration-200">
+          <div className="mt-6 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg tip-box transition-colors duration-200">
             <p className="text-sm text-blue-700 dark:text-blue-300">
               💡 <strong>Tip:</strong> Start by uploading a medical document, then try searching for specific information within it.
             </p>
