@@ -27,26 +27,27 @@
   --radius: 0.5rem;
 }
 
+/* Enhanced Dark Mode Variables with Better Contrast */
 .dark {
-  --background: hsl(0, 0%, 3.9%);
-  --foreground: hsl(0, 0%, 98%);
-  --card: hsl(0, 0%, 3.9%);
-  --card-foreground: hsl(0, 0%, 98%);
-  --popover: hsl(0, 0%, 3.9%);
-  --popover-foreground: hsl(0, 0%, 98%);
-  --primary: hsl(0, 0%, 98%);
-  --primary-foreground: hsl(0, 0%, 9%);
-  --secondary: hsl(0, 0%, 14.9%);
-  --secondary-foreground: hsl(0, 0%, 98%);
-  --muted: hsl(0, 0%, 14.9%);
-  --muted-foreground: hsl(0, 0%, 63.9%);
-  --accent: hsl(0, 0%, 14.9%);
-  --accent-foreground: hsl(0, 0%, 98%);
-  --destructive: hsl(0, 62.8%, 30.6%);
-  --destructive-foreground: hsl(0, 0%, 98%);
-  --border: hsl(0, 0%, 14.9%);
-  --input: hsl(0, 0%, 14.9%);
-  --ring: hsl(0, 0%, 83.1%);
+  --background: hsl(224, 71%, 4%);
+  --foreground: hsl(213, 31%, 91%);
+  --card: hsl(224, 71%, 8%);
+  --card-foreground: hsl(213, 31%, 91%);
+  --popover: hsl(224, 71%, 4%);
+  --popover-foreground: hsl(213, 31%, 91%);
+  --primary: hsl(210, 20%, 98%);
+  --primary-foreground: hsl(220, 14%, 11%);
+  --secondary: hsl(220, 14%, 16%);
+  --secondary-foreground: hsl(210, 20%, 98%);
+  --muted: hsl(220, 14%, 16%);
+  --muted-foreground: hsl(215, 20%, 65%);
+  --accent: hsl(216, 12%, 22%);
+  --accent-foreground: hsl(210, 20%, 98%);
+  --destructive: hsl(0, 62%, 30%);
+  --destructive-foreground: hsl(210, 20%, 98%);
+  --border: hsl(216, 12%, 22%);
+  --input: hsl(216, 12%, 22%);
+  --ring: hsl(216, 12%, 84%);
 }
 
 body {
@@ -215,6 +216,10 @@ body {
   height: 100dvh;
 }
 
+.h-auto {
+  height: auto;
+}
+
 .min-h-24 {
   min-height: 6rem;
 }
@@ -297,6 +302,7 @@ body {
 /* Borders and radius */
 .border {
   border-width: 1px;
+  border-style: solid;
   border-color: var(--border);
 }
 
@@ -347,6 +353,10 @@ body {
   background-color: var(--secondary);
 }
 
+.bg-card {
+  background-color: var(--card);
+}
+
 .bg-zinc-700 {
   background-color: rgb(63, 63, 70);
 }
@@ -355,8 +365,16 @@ body {
   color: var(--foreground);
 }
 
+.text-card-foreground {
+  color: var(--card-foreground);
+}
+
 .text-primary-foreground {
   color: var(--primary-foreground);
+}
+
+.text-secondary-foreground {
+  color: var(--secondary-foreground);
 }
 
 .text-muted-foreground {
@@ -367,8 +385,8 @@ body {
   color: rgb(255, 255, 255);
 }
 
-.dark .bg-muted {
-  background-color: var(--muted);
+.border-primary {
+  border-color: var(--primary);
 }
 
 /* Typography */
@@ -496,6 +514,10 @@ body {
     display: block;
   }
   
+  .sm\\:flex {
+    display: flex;
+  }
+  
   .sm\\:px-4 {
     padding-left: 1rem;
     padding-right: 1rem;
@@ -528,6 +550,12 @@ body {
   transition-duration: 150ms;
 }
 
+.transition-all {
+  transition-property: all;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+
 .duration-200 {
   transition-duration: 200ms;
 }
@@ -543,6 +571,14 @@ body {
 
 .hover\\:text-accent-foreground:hover {
   color: var(--accent-foreground);
+}
+
+.hover\\:bg-destructive:hover {
+  background-color: var(--destructive);
+}
+
+.hover\\:text-destructive-foreground:hover {
+  color: var(--destructive-foreground);
 }
 
 .hover\\:opacity-100:hover {
@@ -601,11 +637,17 @@ body {
 .button-outline {
   border: 1px solid var(--border);
   background-color: var(--background);
+  color: var(--foreground);
 }
 
 .button-outline:hover {
   background-color: var(--accent);
   color: var(--accent-foreground);
+}
+
+.button-ghost {
+  background-color: transparent;
+  color: var(--foreground);
 }
 
 .button-ghost:hover {
@@ -633,6 +675,7 @@ body {
   border-radius: 0.375rem;
   border: 1px solid var(--border);
   background-color: var(--background);
+  color: var(--foreground);
   padding: 0.75rem;
   font-size: 0.875rem;
   transition: all 0.15s ease-in-out;
@@ -690,12 +733,7 @@ body {
   width: fit-content;
   margin-left: auto;
   max-width: 42rem;
-  padding: 0.5rem;
   border-radius: 0.75rem;
-}
-
-.dark .message-user {
-  background-color: var(--muted);
 }
 
 /* Group modifiers for messages */
@@ -707,10 +745,6 @@ body {
   margin-left: auto;
   max-width: 42rem;
   border-radius: 0.75rem;
-}
-
-.dark .group\\/message[data-role="user"] .message-content {
-  background-color: var(--muted);
 }
 
 /* Sidebar */
@@ -768,7 +802,6 @@ body {
 .shrink-0 {
   flex-shrink: 0;
 }
-/* Add these styles to the end of your client/main.css file */
 
 /* Sidebar Chat Item Styles */
 .group {
@@ -779,287 +812,255 @@ body {
   opacity: 1;
 }
 
-/* Ensure proper spacing between chat items */
-.space-y-2 > * + * {
-  margin-top: 0.5rem;
+/* DARK MODE FIXES - Enhanced visibility and proper contrast */
+
+/* Force visibility for main containers */
+.dark .min-h-screen,
+.dark body,
+.dark #react-target {
+  background-color: var(--background) !important;
+  color: var(--foreground) !important;
 }
 
-/* Better hover states for chat items */
-.hover\:bg-accent:hover {
-  background-color: var(--accent);
-}
-
-.bg-secondary {
-  background-color: var(--secondary);
-}
-
-.border-primary {
-  border-color: var(--primary);
-}
-
-/* Delete button hover state */
-.hover\:bg-destructive:hover {
-  background-color: var(--destructive);
-}
-
-.hover\:text-destructive-foreground:hover {
-  color: var(--destructive-foreground);
-}
-
-/* Ensure chat items have proper height */
-.h-auto {
-  height: auto;
-}
-
-/* Better padding for multi-line content */
-.py-3 {
-  padding-top: 0.75rem;
-  padding-bottom: 0.75rem;
-}
-
-/* Ensure delete button is positioned correctly */
-.right-2 {
-  right: 0.5rem;
-}
-
-/* Add visual separation between chat items */
-.border {
-  border-width: 1px;
-  border-style: solid;
-  border-color: var(--border);
-}
-
-/* Transition for smooth animations */
-.transition-all {
-  transition-property: all;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-  transition-duration: 150ms;
-}
-/* client/main.css - Add these dark mode fixes */
-
-/* Enhanced dark mode variables */
-.dark {
-  --background: hsl(0, 0%, 3.9%);
-  --foreground: hsl(0, 0%, 98%);
-  --card: hsl(0, 0%, 7%); /* Darker cards for better contrast */
-  --card-foreground: hsl(0, 0%, 98%);
-  --popover: hsl(0, 0%, 3.9%);
-  --popover-foreground: hsl(0, 0%, 98%);
-  --primary: hsl(0, 0%, 98%);
-  --primary-foreground: hsl(0, 0%, 9%);
-  --secondary: hsl(0, 0%, 14.9%);
-  --secondary-foreground: hsl(0, 0%, 98%);
-  --muted: hsl(0, 0%, 14.9%);
-  --muted-foreground: hsl(0, 0%, 63.9%);
-  --accent: hsl(0, 0%, 14.9%);
-  --accent-foreground: hsl(0, 0%, 98%);
-  --destructive: hsl(0, 62.8%, 30.6%);
-  --destructive-foreground: hsl(0, 0%, 98%);
-  --border: hsl(0, 0%, 14.9%);
-  --input: hsl(0, 0%, 14.9%);
-  --ring: hsl(0, 0%, 83.1%);
-}
-
-/* Fix Overview component visibility in dark mode */
+/* Fix Overview component in dark mode */
 .dark .overview-container {
-  background-color: var(--background);
-  color: var(--foreground);
+  background-color: var(--background) !important;
+  color: var(--foreground) !important;
 }
 
 .dark .overview-container h1 {
-  color: var(--foreground);
+  color: var(--foreground) !important;
 }
 
 .dark .overview-container p {
-  color: var(--muted-foreground);
+  color: var(--muted-foreground) !important;
 }
 
-/* Fix suggestion cards in dark mode */
-.dark .suggestion-card {
-  background-color: var(--card);
-  border-color: var(--border);
-  color: var(--card-foreground);
+/* Fix overview cards */
+.dark .overview-card {
+  background-color: var(--card) !important;
+  border-color: var(--border) !important;
+  color: var(--card-foreground) !important;
 }
 
-.dark .suggestion-card:hover {
-  background-color: var(--accent);
-  color: var(--accent-foreground);
+.dark .overview-card h3 {
+  color: var(--foreground) !important;
 }
 
-/* Fix icon visibility */
-.dark .overview-icons svg {
-  color: var(--muted-foreground);
+.dark .overview-card p {
+  color: var(--muted-foreground) !important;
 }
 
-/* Fix button variants in dark mode */
-.dark .button-ghost {
-  color: var(--foreground);
-  background-color: transparent;
+.dark .overview-card .icon {
+  color: var(--primary) !important;
 }
 
-.dark .button-ghost:hover {
-  background-color: var(--accent);
-  color: var(--accent-foreground);
+/* Fix tip box */
+.dark .tip-box {
+  background-color: var(--secondary) !important;
+  color: var(--secondary-foreground) !important;
+  border-color: var(--border) !important;
 }
 
-.dark .button-outline {
-  border-color: var(--border);
-  background-color: var(--background);
-  color: var(--foreground);
+/* Fix message visibility */
+.dark .group\\/message {
+  color: var(--foreground) !important;
 }
 
-.dark .button-outline:hover {
-  background-color: var(--accent);
-  color: var(--accent-foreground);
+.dark .group\\/message[data-role="user"] .message-content {
+  background-color: var(--primary) !important;
+  color: var(--primary-foreground) !important;
 }
 
-/* Fix input areas in dark mode */
-.dark .textarea {
-  background-color: var(--muted);
-  border-color: var(--border);
-  color: var(--foreground);
+.dark .group\\/message[data-role="assistant"] {
+  color: var(--foreground) !important;
 }
 
-.dark .textarea::placeholder {
-  color: var(--muted-foreground);
-}
-
-.dark .textarea:focus-visible {
-  border-color: var(--ring);
-  outline: 2px solid var(--ring);
-}
-
-/* Fix message containers */
 .dark .message-user {
-  background-color: var(--primary);
-  color: var(--primary-foreground);
+  background-color: var(--primary) !important;
+  color: var(--primary-foreground) !important;
 }
 
-/* Fix suggestion action cards specifically */
-.dark .suggestion-actions {
-  border-color: var(--border);
-  background-color: var(--card);
+/* Fix sidebar visibility */
+.dark .sidebar,
+.dark .fixed.inset-y-0.left-0 {
+  background-color: var(--background) !important;
+  border-color: var(--border) !important;
+  color: var(--foreground) !important;
 }
 
-.dark .suggestion-actions .button {
-  color: var(--card-foreground);
+.dark .sidebar h2 {
+  color: var(--foreground) !important;
 }
 
-.dark .suggestion-actions .button .font-medium {
-  color: var(--foreground);
+.dark .sidebar .button {
+  color: var(--foreground) !important;
+  background-color: var(--background) !important;
+  border-color: var(--border) !important;
 }
 
-.dark .suggestion-actions .button .text-muted-foreground {
-  color: var(--muted-foreground);
+.dark .sidebar .button:hover {
+  background-color: var(--accent) !important;
+  color: var(--accent-foreground) !important;
+}
+
+/* Fix sidebar chat items */
+.dark .sidebar .space-y-2 > div {
+  background-color: var(--card) !important;
+  border-color: var(--border) !important;
+  color: var(--card-foreground) !important;
+}
+
+.dark .sidebar .font-medium {
+  color: var(--foreground) !important;
+}
+
+.dark .sidebar .text-muted-foreground {
+  color: var(--muted-foreground) !important;
 }
 
 /* Fix header in dark mode */
 .dark .header {
-  background-color: var(--background);
-  border-bottom-color: var(--border);
+  background-color: var(--background) !important;
+  border-bottom-color: var(--border) !important;
+  color: var(--foreground) !important;
+}
+
+.dark .header h1 {
+  color: var(--foreground) !important;
 }
 
 /* Fix chat input container */
 .dark .chat-input-container {
-  background-color: var(--background);
+  background-color: var(--background) !important;
+}
+
+.dark .textarea {
+  background-color: var(--muted) !important;
+  border-color: var(--border) !important;
+  color: var(--foreground) !important;
+}
+
+.dark .textarea::placeholder {
+  color: var(--muted-foreground) !important;
+}
+
+.dark .textarea:focus-visible {
+  border-color: var(--ring) !important;
+  outline: 2px solid var(--ring) !important;
+}
+
+/* Fix suggestion cards */
+.dark .suggestion-actions {
+  background-color: var(--background) !important;
+}
+
+.dark .suggestion-card {
+  background-color: var(--card) !important;
+  border-color: var(--border) !important;
+  color: var(--card-foreground) !important;
+}
+
+.dark .suggestion-card:hover {
+  background-color: var(--accent) !important;
+  color: var(--accent-foreground) !important;
+}
+
+.dark .suggestion-card .font-medium {
+  color: var(--foreground) !important;
+}
+
+.dark .suggestion-card .text-muted-foreground {
+  color: var(--muted-foreground) !important;
+}
+
+.dark .suggestion-actions .button {
+  color: var(--card-foreground) !important;
+}
+
+.dark .suggestion-actions .button .font-medium {
+  color: var(--foreground) !important;
+}
+
+.dark .suggestion-actions .button .text-muted-foreground {
+  color: var(--muted-foreground) !important;
+}
+
+/* Fix button variants in dark mode */
+.dark .button-ghost {
+  color: var(--foreground) !important;
+  background-color: transparent !important;
+}
+
+.dark .button-ghost:hover {
+  background-color: var(--accent) !important;
+  color: var(--accent-foreground) !important;
+}
+
+.dark .button-outline {
+  border-color: var(--border) !important;
+  background-color: var(--background) !important;
+  color: var(--foreground) !important;
+}
+
+.dark .button-outline:hover {
+  background-color: var(--accent) !important;
+  color: var(--accent-foreground) !important;
+}
+
+.dark .button-primary {
+  background-color: var(--primary) !important;
+  color: var(--primary-foreground) !important;
 }
 
 /* Fix provider switcher dropdown */
 .dark .provider-dropdown {
-  background-color: var(--popover);
-  border-color: var(--border);
-  color: var(--popover-foreground);
+  background-color: var(--popover) !important;
+  border-color: var(--border) !important;
+  color: var(--popover-foreground) !important;
 }
 
 .dark .provider-dropdown button:hover {
-  background-color: var(--accent);
-  color: var(--accent-foreground);
+  background-color: var(--accent) !important;
+  color: var(--accent-foreground) !important;
 }
 
 /* Fix theme toggle visibility */
 .dark .theme-toggle {
-  color: var(--foreground);
-  border-color: var(--border);
+  color: var(--foreground) !important;
+  border-color: var(--border) !important;
 }
 
 /* Fix scrollbar in dark mode */
 .dark ::-webkit-scrollbar-track {
-  background: var(--background);
+  background: var(--background) !important;
 }
 
 .dark ::-webkit-scrollbar-thumb {
-  background-color: var(--muted);
+  background-color: var(--muted) !important;
   border-radius: 6px;
 }
 
 .dark ::-webkit-scrollbar-thumb:hover {
-  background-color: var(--muted-foreground);
+  background-color: var(--muted-foreground) !important;
 }
 
 /* Fix tooltip/popup backgrounds */
 .dark .tooltip,
 .dark .dropdown-content {
-  background-color: var(--popover);
-  border-color: var(--border);
-  color: var(--popover-foreground);
-}
-
-/* Fix any remaining text that might be invisible */
-.dark * {
-  /* Ensure no element has a completely transparent text */
-  color: inherit;
-}
-
-/* Specific fixes for your overview cards */
-.dark .overview-card {
-  background-color: var(--card);
-  border-color: var(--border);
-  color: var(--card-foreground);
-}
-
-.dark .overview-card h3 {
-  color: var(--foreground);
-}
-
-.dark .overview-card p {
-  color: var(--muted-foreground);
-}
-
-.dark .overview-card .icon {
-  color: var(--primary);
-}
-
-/* Fix the tip box */
-.dark .tip-box {
-  background-color: var(--secondary);
-  color: var(--secondary-foreground);
-  border-color: var(--border);
-}
-
-/* Animation fixes for dark mode */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.dark .animate-fade-in {
-  animation: fadeIn 0.3s ease-out;
+  background-color: var(--popover) !important;
+  border-color: var(--border) !important;
+  color: var(--popover-foreground) !important;
 }
 
 /* Ensure proper contrast for all interactive elements */
 .dark button:not(.button-primary):not(.button-secondary) {
-  color: var(--foreground);
+  color: var(--foreground) !important;
 }
 
 .dark button:not(.button-primary):not(.button-secondary):hover {
-  background-color: var(--accent);
-  color: var(--accent-foreground);
+  background-color: var(--accent) !important;
+  color: var(--accent-foreground) !important;
 }
 
 /* Fix any hardcoded colors that might still be present */
@@ -1071,12 +1072,20 @@ body {
   color: hsl(217, 91%, 60%) !important;
 }
 
+.dark .text-green-500 {
+  color: hsl(142, 76%, 50%) !important;
+}
+
 .dark .text-green-600 {
   color: hsl(142, 76%, 36%) !important;
 }
 
 .dark .text-red-600 {
   color: hsl(0, 84%, 60%) !important;
+}
+
+.dark .text-purple-500 {
+  color: hsl(271, 81%, 56%) !important;
 }
 
 /* Fix backgrounds that might be using hardcoded colors */
@@ -1098,4 +1107,229 @@ body {
 
 .dark .bg-red-50 {
   background-color: hsl(0, 84%, 15%) !important;
-} 
+}
+
+/* Fix markdown content */
+.dark .prose {
+  color: var(--foreground) !important;
+}
+
+.dark .prose * {
+  color: inherit !important;
+}
+
+.dark .prose h1,
+.dark .prose h2,
+.dark .prose h3,
+.dark .prose h4,
+.dark .prose h5,
+.dark .prose h6 {
+  color: var(--foreground) !important;
+}
+
+.dark .prose p {
+  color: var(--foreground) !important;
+}
+
+.dark .prose code {
+  background-color: var(--muted) !important;
+  color: var(--foreground) !important;
+}
+
+.dark .prose pre {
+  background-color: var(--muted) !important;
+  color: var(--foreground) !important;
+}
+
+/* Fix any remaining text that might be invisible */
+.dark * {
+  color: inherit !important;
+}
+
+/* Force all direct children to inherit proper colors */
+.dark .min-h-screen > * {
+  color: inherit !important;
+}
+
+.dark .flex.flex-col.h-dvh > * {
+  color: inherit !important;
+}
+
+/* Professional Sidebar Enhancements */
+.sidebar-professional {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* Enhanced hover effects */
+.chat-item-hover {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.chat-item-hover:hover {
+  transform: translateX(2px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.dark .chat-item-hover:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* Active chat indicator animation */
+.active-indicator {
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: scaleY(0);
+  }
+  to {
+    opacity: 1;
+    transform: scaleY(1);
+  }
+}
+
+/* Improved button styles */
+.btn-primary-enhanced {
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  transition: all 0.2s ease;
+}
+
+.btn-primary-enhanced:hover {
+  background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+/* Professional spacing and typography */
+.sidebar-header {
+  background: linear-gradient(180deg, rgba(249, 250, 251, 0.8) 0%, rgba(243, 244, 246, 0.4) 100%);
+}
+
+.dark .sidebar-header {
+  background: linear-gradient(180deg, rgba(17, 24, 39, 0.8) 0%, rgba(31, 41, 55, 0.4) 100%);
+}
+
+/* Badge styles */
+.status-badge {
+  font-size: 0.75rem;
+  font-weight: 500;
+  border-radius: 0.375rem;
+  padding: 0.125rem 0.375rem;
+  transition: all 0.2s ease;
+}
+
+.patient-badge {
+  background: linear-gradient(135deg, #10b981 0%, #047857 100%);
+  color: white;
+}
+
+.document-badge {
+  background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);
+  color: white;
+}
+
+/* Loading states */
+.loading-shimmer {
+  background: linear-gradient(90deg, 
+    rgba(243, 244, 246, 0.0) 0%, 
+    rgba(243, 244, 246, 0.8) 50%, 
+    rgba(243, 244, 246, 0.0) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+.dark .loading-shimmer {
+  background: linear-gradient(90deg, 
+    rgba(31, 41, 55, 0.0) 0%, 
+    rgba(31, 41, 55, 0.8) 50%, 
+    rgba(31, 41, 55, 0.0) 100%);
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Improved scrollbar */
+.professional-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.professional-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.professional-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(156, 163, 175, 0.5);
+  border-radius: 2px;
+}
+
+.professional-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(156, 163, 175, 0.8);
+}
+
+.dark .professional-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(75, 85, 99, 0.5);
+}
+
+.dark .professional-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(75, 85, 99, 0.8);
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+  .sidebar-mobile {
+    width: 85vw;
+    max-width: 320px;
+  }
+}
+
+/* Micro-interactions */
+.micro-bounce {
+  transition: transform 0.15s ease;
+}
+
+.micro-bounce:active {
+  transform: scale(0.98);
+}
+
+/* Enhanced focus states */
+.focus-ring-enhanced:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+  border-radius: 0.375rem;
+}
+
+/* Professional shadows */
+.shadow-professional {
+  box-shadow: 
+    0 1px 3px rgba(0, 0, 0, 0.1),
+    0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+.shadow-professional-hover {
+  box-shadow: 
+    0 4px 6px rgba(0, 0, 0, 0.07),
+    0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.dark .shadow-professional {
+  box-shadow: 
+    0 1px 3px rgba(0, 0, 0, 0.3),
+    0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.dark .shadow-professional-hover {
+  box-shadow: 
+    0 4px 6px rgba(0, 0, 0, 0.3),
+    0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+/* Emergency visibility fix for any remaining invisible text */
+.dark .invisible-text-fix {
+  color: white !important;
+  background-color: rgba(255, 255, 255, 0.1) !important;
+}

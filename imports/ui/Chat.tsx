@@ -16,6 +16,7 @@ export const Chat: React.FC = () => {
   const [isUploading, setIsUploading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [messagesContainerRef] = useScrollToBottom<HTMLDivElement>();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Initialize or load session on mount
   useEffect(() => {
