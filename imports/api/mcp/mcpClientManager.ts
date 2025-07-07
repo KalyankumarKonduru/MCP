@@ -1,4 +1,3 @@
-// imports/api/mcp/mcpClientManager.ts - Complete file
 import Anthropic from '@anthropic-ai/sdk';
 import { MedicalServerConnection, MedicalDocumentOperations, createMedicalOperations } from './medicalServerConnection';
 
