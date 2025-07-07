@@ -1,3 +1,5 @@
+// Complete replacement for imports/api/mcp/mcpClientManager.ts
+
 import Anthropic from '@anthropic-ai/sdk';
 import { MedicalServerConnection, MedicalDocumentOperations, createMedicalOperations } from './medicalServerConnection';
 
@@ -12,11 +14,6 @@ export class MCPClientManager {
   private anthropic?: Anthropic;
   private isInitialized = false;
   private config?: MCPClientConfig;
-  
-  // Store both API keys separately
-  private anthropicKey?: string;
-  private ozwellKey?: string;
-  private ozwellEndpoint?: string;
   
   // Medical MCP connection (Streamable HTTP)
   private medicalConnection?: MedicalServerConnection;
@@ -42,37 +39,15 @@ export class MCPClientManager {
     
     this.config = config;
 
-    // Store API keys for both providers if available
-    const settings = (global as any).Meteor?.settings?.private;
-    this.anthropicKey = settings?.ANTHROPIC_API_KEY || process.env.ANTHROPIC_API_KEY;
-    this.ozwellKey = settings?.OZWELL_API_KEY || process.env.OZWELL_API_KEY;
-    this.ozwellEndpoint = settings?.OZWELL_ENDPOINT || process.env.OZWELL_ENDPOINT || config.ozwellEndpoint;
-
-    console.log('🔧 Available API Keys:');
-    console.log('  Anthropic:', !!this.anthropicKey, this.anthropicKey?.substring(0, 15) + '...');
-    console.log('  Ozwell:', !!this.ozwellKey, this.ozwellKey?.substring(0, 15) + '...');
-    console.log('  Ozwell Endpoint:', this.ozwellEndpoint);
-
     try {
       if (config.provider === 'anthropic') {
-        if (!this.anthropicKey) {
-          throw new Error('Anthropic API key not found');
-        }
-        console.log('Creating Anthropic client...');
+        console.log('Creating Anthropic client with tool calling support...');
         this.anthropic = new Anthropic({
-          apiKey: this.anthropicKey,
+          apiKey: config.apiKey,
         });
-        // Update config with correct key
-        this.config.apiKey = this.anthropicKey;
         console.log('Anthropic client created successfully');
       } else if (config.provider === 'ozwell') {
-        if (!this.ozwellKey) {
-          throw new Error('Ozwell API key not found');
-        }
-        // Update config with correct key and endpoint
-        this.config.apiKey = this.ozwellKey;
-        this.config.ozwellEndpoint = this.ozwellEndpoint;
-        console.log('Ozwell provider configured with endpoint:', this.ozwellEndpoint);
+        console.log('Ozwell provider configured with endpoint:', config.ozwellEndpoint);
       }
 
       this.isInitialized = true;
@@ -86,7 +61,6 @@ export class MCPClientManager {
   // Connect to medical MCP server via Streamable HTTP
   public async connectToMedicalServer(): Promise<void> {
     try {
-      // Get the MCP server URL from settings (default to localhost:3001)
       const settings = (global as any).Meteor?.settings?.private;
       const mcpServerUrl = settings?.MEDICAL_MCP_SERVER_URL || 
                            process.env.MEDICAL_MCP_SERVER_URL || 
@@ -117,15 +91,335 @@ export class MCPClientManager {
       
     } catch (error) {
       console.error('❌ Medical MCP Server HTTP connection failed:', error);
-      console.error('   Document processing features will be disabled.');
-      console.error('   Make sure to:');
-      console.error('   1. Start the MCP server in HTTP mode: npm run start:http');
-      console.error('   2. Check the MCP server URL in settings.json is correct');
-      console.error('   3. Verify the MCP server is accessible at the configured URL');
-      console.error('   4. Check that MongoDB and OpenAI credentials are configured in the MCP server');
-      console.error('   The server is running but MCP connection failed. Check server logs.');
       throw error;
     }
+  }
+
+  // Convert MCP tools to Anthropic tool format
+  private convertMCPToolsToAnthropicFormat(): any[] {
+    if (!this.availableTools || this.availableTools.length === 0) {
+      return [];
+    }
+
+    return this.availableTools.map(tool => ({
+      name: tool.name,
+      description: tool.description,
+      input_schema: {
+        type: "object",
+        properties: tool.inputSchema?.properties || {},
+        required: tool.inputSchema?.required || []
+      }
+    }));
+  }
+
+  // Enhanced query processing with Claude native tool calling
+  public async processQueryWithClaudeToolCalling(
+    query: string,
+    context?: { documentId?: string; patientId?: string; sessionId?: string }
+  ): Promise<string> {
+    if (!this.isInitialized || !this.config) {
+      throw new Error('MCP Client not initialized');
+    }
+
+    if (this.config.provider !== 'anthropic' || !this.anthropic) {
+      // Fall back to old behavior for Ozwell
+      return this.processQueryWithMedicalContext(query, context);
+    }
+
+    try {
+      console.log(`🤖 Using Claude native tool calling for query: "${query}"`);
+
+      // Convert MCP tools to Anthropic format
+      const anthropicTools = this.convertMCPToolsToAnthropicFormat();
+      console.log(`🔧 Available tools for Claude: ${anthropicTools.map(t => t.name).join(', ')}`);
+
+      // Build system prompt
+      const systemPrompt = this.buildClaudeSystemPrompt(context);
+
+      // Initial message to Claude with tools
+      let messages: any[] = [{ role: 'user', content: query }];
+
+      // Add conversation context if available
+      if (context?.sessionId) {
+        const contextData = await this.getSessionContext(context.sessionId);
+        if (contextData) {
+          messages = [...contextData, { role: 'user', content: query }];
+        }
+      }
+
+      let response = await this.anthropic.messages.create({
+        model: 'claude-3-5-sonnet-20241022',
+        max_tokens: 2000,
+        system: systemPrompt,
+        messages: messages,
+        tools: anthropicTools.length > 0 ? anthropicTools : undefined,
+      });
+
+      console.log(`📝 Claude response type: ${response.content[0].type}`);
+
+      // Handle tool calls
+      while (response.stop_reason === 'tool_use') {
+        console.log(`🔧 Claude wants to use tools`);
+        
+        // Extract tool calls from response
+        const toolCalls = response.content.filter(block => block.type === 'tool_use');
+        console.log(`🔧 Claude requested ${toolCalls.length} tool calls`);
+
+        // Add Claude's response to conversation
+        messages.push({
+          role: 'assistant',
+          content: response.content
+        });
+
+        // Execute each tool call
+        const toolResults = [];
+        for (const toolCall of toolCalls) {
+          console.log(`🔧 Executing tool: ${toolCall.name} with args:`, toolCall.input);
+          
+          try {
+            const toolResult = await this.callMCPTool(toolCall.name, toolCall.input);
+            
+            // Format tool result for Claude
+            let resultContent = '';
+            if (toolResult?.content?.[0]?.text) {
+              try {
+                const parsedResult = JSON.parse(toolResult.content[0].text);
+                resultContent = JSON.stringify(parsedResult, null, 2);
+              } catch {
+                resultContent = toolResult.content[0].text;
+              }
+            } else {
+              resultContent = JSON.stringify(toolResult, null, 2);
+            }
+
+            toolResults.push({
+              role: 'user',
+              content: [
+                {
+                  type: 'tool_result',
+                  tool_use_id: toolCall.id,
+                  content: resultContent
+                }
+              ]
+            });
+
+            console.log(`✅ Tool ${toolCall.name} executed successfully`);
+          } catch (error) {
+            console.error(`❌ Tool ${toolCall.name} failed:`, error);
+            
+            toolResults.push({
+              role: 'user',
+              content: [
+                {
+                  type: 'tool_result',
+                  tool_use_id: toolCall.id,
+                  content: `Error executing tool: ${error.message}`,
+                  is_error: true
+                }
+              ]
+            });
+          }
+        }
+
+        // Add tool results to conversation
+        messages.push(...toolResults);
+
+        // Get Claude's response to the tool results
+        response = await this.anthropic.messages.create({
+          model: 'claude-3-5-sonnet-20241022',
+          max_tokens: 2000,
+          system: systemPrompt,
+          messages: messages,
+          tools: anthropicTools.length > 0 ? anthropicTools : undefined,
+        });
+
+        console.log(`📝 Claude follow-up response type: ${response.content[0].type}`);
+      }
+
+      // Extract final text response
+      const textContent = response.content.find(block => block.type === 'text');
+      if (textContent) {
+        console.log(`✅ Claude native tool calling completed successfully`);
+        return textContent.text;
+      }
+
+      return 'No text response generated';
+
+    } catch (error) {
+      console.error('❌ Claude tool calling failed:', error);
+      // Fall back to regular processing
+      return this.processQueryWithMedicalContext(query, context);
+    }
+  }
+
+  private buildClaudeSystemPrompt(context?: any): string {
+    let systemPrompt = `You are a medical AI assistant with access to powerful medical document processing tools via MCP (Model Context Protocol).
+
+AVAILABLE TOOLS:
+${this.availableTools.map(tool => `- ${tool.name}: ${tool.description}`).join('\n')}
+
+TOOL USAGE GUIDELINES:
+- Use searchDocuments when users ask to find, search, or look for medical information
+- Use uploadDocument when users want to upload or process medical documents
+- Use listDocuments when users want to see what documents are available
+- Use extractMedicalEntities when you need to analyze medical terms in text
+- Use findSimilarCases when looking for similar medical conditions or patients
+- Use analyzePatientHistory when users ask about patient medical history analysis
+- Use getMedicalInsights when users need medical recommendations or insights
+
+RESPONSE STYLE:
+- Be clear, helpful, and medically accurate
+- Always cite information from documents when available
+- Provide specific details like dosages, timeframes, and treatment plans when found
+- If you use tools, explain what you found and how it answers the user's question`;
+
+    if (context?.patientId) {
+      systemPrompt += `\n\nCURRENT PATIENT CONTEXT: ${context.patientId}`;
+    }
+
+    return systemPrompt;
+  }
+
+  private async getSessionContext(sessionId: string): Promise<any[] | null> {
+    // This would integrate with your session management
+    // For now, return null to use just the current query
+    return null;
+  }
+
+  // Keep the old method for Ozwell compatibility
+  public async processQueryWithMedicalContext(
+    query: string,
+    context?: { documentId?: string; patientId?: string; sessionId?: string }
+  ): Promise<string> {
+    // Your existing implementation for Ozwell
+    if (!this.isInitialized || !this.config) {
+      throw new Error('MCP Client not initialized');
+    }
+
+    try {
+      let enhancedQuery = query;
+      let medicalContext = '';
+      let toolResults: any[] = [];
+
+      console.log(`🧠 Processing query with medical context (${this.config.provider}): "${query}"`);
+
+      // For Ozwell, use the smart middleware approach
+      if (this.config.provider === 'ozwell') {
+        // 1. DETECT AND EXECUTE SEARCH QUERIES AUTOMATICALLY
+        if (this.isDirectSearchQuery(query)) {
+          try {
+            const searchTerms = this.extractSearchTerms(query);
+            console.log(`🔍 Auto-executing search for: "${searchTerms}"`);
+            
+            const searchResult = await this.callMCPTool('searchDocuments', {
+              query: searchTerms,
+              limit: 5,
+              threshold: 0.3,
+              searchType: 'hybrid',
+              filter: context?.patientId ? { patientId: context.patientId } : {}
+            });
+            
+            toolResults.push({
+              tool: 'searchDocuments',
+              query: searchTerms,
+              result: searchResult
+            });
+            
+            // Format results and return immediately for search queries
+            return this.formatSearchResults(searchResult, query, searchTerms);
+            
+          } catch (error) {
+            console.error('Auto-search failed:', error);
+            return `I tried to search for "${query}" but encountered an error. Please try rephrasing your search or ensure medical documents have been uploaded to the system.`;
+          }
+        }
+
+        // 2. GATHER MEDICAL CONTEXT for general queries
+        if (this.medicalOperations && this.isMedicalQuery(query)) {
+          try {
+            console.log(`🏥 Gathering medical context for query`);
+            const searchResult = await this.medicalOperations.searchDocuments(query, {
+              filter: context?.patientId ? { patientId: context.patientId } : {},
+              limit: 3,
+              threshold: 0.4
+            });
+            
+            if (searchResult.success && searchResult.results && searchResult.results.length > 0) {
+              medicalContext = `\n\n**Relevant Medical Information Found:**\n${this.summarizeSearchResults(searchResult.results)}`;
+              toolResults.push({
+                tool: 'contextSearch',
+                result: searchResult
+              });
+            }
+          } catch (error) {
+            console.error('Error fetching medical context:', error);
+          }
+        }
+
+        // 3. BUILD ENHANCED PROMPT with context
+        if (toolResults.length > 0 && toolResults[0].tool === 'contextSearch') {
+          enhancedQuery = `User Query: ${query}\n\nI found some relevant medical information that might help answer this question:\n${medicalContext}\n\nPlease provide a helpful answer based on this medical context and your knowledge.`;
+        } else {
+          enhancedQuery = query + medicalContext;
+        }
+
+        // Add available tools context for the LLM
+        const toolsContext = this.buildToolsContext(query);
+        if (toolsContext) {
+          enhancedQuery += `\n\nNote: I have access to medical document tools if you need me to search for specific information: ${toolsContext}`;
+        }
+      }
+
+      // 4. PROCESS WITH LLM
+      console.log(`🤖 Sending to LLM provider: ${this.config.provider}`);
+      
+      if (this.config.provider === 'anthropic' && this.anthropic) {
+        return await this.processWithAnthropic(enhancedQuery);
+      } else if (this.config.provider === 'ozwell') {
+        return await this.processWithOzwell(enhancedQuery);
+      }
+      
+      throw new Error('No LLM provider configured');
+    } catch (error) {
+      console.error('Error processing query with medical context:', error);
+      throw error;
+    }
+  }
+
+  // Main entry point - routes to appropriate method based on provider
+  public async processQuery(query: string, context?: any): Promise<string> {
+    if (this.config?.provider === 'anthropic') {
+      return this.processQueryWithClaudeToolCalling(query, context);
+    } else {
+      return this.processQueryWithMedicalContext(query, context);
+    }
+  }
+
+  // Provider switching methods
+  public async switchProvider(provider: 'anthropic' | 'ozwell'): Promise<void> {
+    if (!this.config) {
+      throw new Error('MCP Client not initialized');
+    }
+
+    this.config.provider = provider;
+    console.log(`🔄 Switched to ${provider.toUpperCase()} provider`);
+  }
+
+  public getCurrentProvider(): 'anthropic' | 'ozwell' | undefined {
+    return this.config?.provider;
+  }
+
+  public getAvailableProviders(): string[] {
+    // This should check what providers are actually configured
+    const settings = (global as any).Meteor?.settings?.private;
+    const anthropicKey = settings?.ANTHROPIC_API_KEY || process.env.ANTHROPIC_API_KEY;
+    const ozwellKey = settings?.OZWELL_API_KEY || process.env.OZWELL_API_KEY;
+    
+    const providers = [];
+    if (anthropicKey) providers.push('anthropic');
+    if (ozwellKey) providers.push('ozwell');
+    
+    return providers;
   }
 
   // Get available tools
@@ -165,163 +459,7 @@ export class MCPClientManager {
     }
   }
 
-  public async switchProvider(provider: 'anthropic' | 'ozwell'): Promise<void> {
-    if (!this.config) {
-      throw new Error('MCP Client not initialized');
-    }
-
-    console.log(`🔄 Switching from ${this.config.provider} to ${provider}`);
-
-    // Validate we have the required API key
-    if (provider === 'anthropic') {
-      if (!this.anthropicKey) {
-        throw new Error('Cannot switch to Anthropic: API key not available');
-      }
-      // Update config with Anthropic key
-      this.config.provider = provider;
-      this.config.apiKey = this.anthropicKey;
-      
-      // Reinitialize Anthropic client if needed
-      if (!this.anthropic) {
-        this.anthropic = new Anthropic({
-          apiKey: this.anthropicKey,
-        });
-      }
-    } else if (provider === 'ozwell') {
-      if (!this.ozwellKey) {
-        throw new Error('Cannot switch to Ozwell: API key not available');
-      }
-      // Update config with Ozwell key and endpoint
-      this.config.provider = provider;
-      this.config.apiKey = this.ozwellKey;
-      this.config.ozwellEndpoint = this.ozwellEndpoint;
-    }
-
-    console.log(`✅ Switched to ${provider.toUpperCase()} provider`);
-    console.log(`🔑 Using API key: ${this.config.apiKey?.substring(0, 15)}...`);
-  }
-
-  public async processQuery(query: string): Promise<string> {
-    console.log('Processing query with provider:', this.config?.provider);
-    
-    if (!this.isInitialized || !this.config) {
-      const error = 'MCP Client not initialized';
-      console.error(error);
-      throw new Error(error);
-    }
-
-    try {
-      if (this.config.provider === 'anthropic' && this.anthropic) {
-        console.log('Using Anthropic for processing...');
-        return await this.processWithAnthropic(query);
-      } else if (this.config.provider === 'ozwell') {
-        console.log('Using Ozwell for processing...');
-        return await this.processWithOzwell(query);
-      }
-      throw new Error('No LLM provider configured');
-    } catch (error) {
-      console.error('Error processing query:', error);
-      throw error;
-    }
-  }
-
-  // Enhanced query processing with automatic tool calling and context
-  public async processQueryWithMedicalContext(
-    query: string,
-    context?: { documentId?: string; patientId?: string; sessionId?: string }
-  ): Promise<string> {
-    if (!this.isInitialized || !this.config) {
-      throw new Error('MCP Client not initialized');
-    }
-
-    try {
-      let enhancedQuery = query;
-      let medicalContext = '';
-      let toolResults: any[] = [];
-
-      console.log(`🧠 Processing query with medical context: "${query}"`);
-
-      // 1. DETECT AND EXECUTE SEARCH QUERIES AUTOMATICALLY
-      if (this.isDirectSearchQuery(query)) {
-        try {
-          const searchTerms = this.extractSearchTerms(query);
-          console.log(`🔍 Auto-executing search for: "${searchTerms}"`);
-          
-          const searchResult = await this.callMCPTool('searchDocuments', {
-            query: searchTerms,
-            limit: 5,
-            threshold: 0.3,
-            searchType: 'hybrid',
-            filter: context?.patientId ? { patientId: context.patientId } : {}
-          });
-          
-          toolResults.push({
-            tool: 'searchDocuments',
-            query: searchTerms,
-            result: searchResult
-          });
-          
-          // Format results and return immediately for search queries
-          return this.formatSearchResults(searchResult, query, searchTerms);
-          
-        } catch (error) {
-          console.error('Auto-search failed:', error);
-          return `I tried to search for "${query}" but encountered an error. Please try rephrasing your search or ensure medical documents have been uploaded to the system.`;
-        }
-      }
-
-      // 2. GATHER MEDICAL CONTEXT for general queries
-      if (this.medicalOperations && this.isMedicalQuery(query)) {
-        try {
-          console.log(`🏥 Gathering medical context for query`);
-          const searchResult = await this.medicalOperations.searchDocuments(query, {
-            filter: context?.patientId ? { patientId: context.patientId } : {},
-            limit: 3,
-            threshold: 0.4
-          });
-          
-          if (searchResult.success && searchResult.results && searchResult.results.length > 0) {
-            medicalContext = `\n\n**Relevant Medical Information Found:**\n${this.summarizeSearchResults(searchResult.results)}`;
-            toolResults.push({
-              tool: 'contextSearch',
-              result: searchResult
-            });
-          }
-        } catch (error) {
-          console.error('Error fetching medical context:', error);
-        }
-      }
-
-      // 3. BUILD ENHANCED PROMPT with context and available tools
-      if (toolResults.length > 0 && toolResults[0].tool === 'contextSearch') {
-        enhancedQuery = `User Query: ${query}\n\nI found some relevant medical information that might help answer this question:\n${medicalContext}\n\nPlease provide a helpful answer based on this medical context and your knowledge.`;
-      } else {
-        enhancedQuery = query + medicalContext;
-      }
-
-      // Add available tools context for the LLM
-      const toolsContext = this.buildToolsContext(query);
-      if (toolsContext) {
-        enhancedQuery += `\n\nNote: I have access to medical document tools if you need me to search for specific information: ${toolsContext}`;
-      }
-
-      // 4. PROCESS WITH LLM
-      console.log(`🤖 Sending to LLM provider: ${this.config.provider}`);
-      
-      if (this.config.provider === 'anthropic' && this.anthropic) {
-        return await this.processWithAnthropic(enhancedQuery);
-      } else if (this.config.provider === 'ozwell') {
-        return await this.processWithOzwell(enhancedQuery);
-      }
-      
-      throw new Error('No LLM provider configured');
-    } catch (error) {
-      console.error('Error processing query with medical context:', error);
-      throw error;
-    }
-  }
-
-  // Helper methods for query processing
+  // Helper methods
   private isDirectSearchQuery(query: string): boolean {
     const searchPatterns = [
       /^search\s+for\s+/i,
@@ -367,7 +505,6 @@ export class MCPClientManager {
       return '';
     }
 
-    // Determine which tools might be relevant to the query
     const relevantTools = this.availableTools.filter(tool => {
       const toolKeywords = tool.name.toLowerCase() + ' ' + tool.description.toLowerCase();
       const queryLower = query.toLowerCase();
@@ -394,7 +531,6 @@ export class MCPClientManager {
     try {
       console.log(`🔧 Formatting search results for query: "${originalQuery}"`);
       
-      // Parse the MCP tool result
       let resultData;
       if (searchResult?.content?.[0]?.text) {
         try {
@@ -421,42 +557,35 @@ export class MCPClientManager {
         return `I searched for "${searchTerms}" but didn't find any matching medical documents.\n\n**Suggestions:**\n• Try different search terms (specific conditions, medications, or patient names)\n• Upload more medical documents to expand the database\n• Use broader search terms\n• Check if the documents contain the information you're looking for`;
       }
       
-      // Format the results in a user-friendly way
       let response = `**Found ${results.length} medical document${results.length > 1 ? 's' : ''} for "${searchTerms}":**\n\n`;
       
       results.forEach((result: any, index: number) => {
         response += `**${index + 1}. ${result.title}**\n`;
         
-        // Add relevance score
         if (result.score !== undefined) {
           const percentage = Math.round(result.score * 100);
           response += `📊 **Relevance:** ${percentage}%\n`;
         }
         
-        // Add patient information
         if (result.metadata?.patientId && result.metadata.patientId !== 'Unknown Patient') {
           response += `👤 **Patient:** ${result.metadata.patientId}\n`;
         }
         
-        // Add document type
         if (result.metadata?.documentType) {
           const type = result.metadata.documentType.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase());
           response += `📋 **Type:** ${type}\n`;
         }
         
-        // Add date
         if (result.metadata?.uploadedAt) {
           const date = new Date(result.metadata.uploadedAt).toLocaleDateString();
           response += `📅 **Date:** ${date}\n`;
         }
         
-        // Add content preview
         if (result.content) {
           const preview = result.content.substring(0, 250).replace(/\n+/g, ' ').trim();
           response += `📄 **Content:** ${preview}${result.content.length > 250 ? '...' : ''}\n`;
         }
         
-        // Add relevant medical entities if available
         if (result.relevantEntities && result.relevantEntities.length > 0) {
           const entities = result.relevantEntities
             .slice(0, 5)
@@ -468,7 +597,6 @@ export class MCPClientManager {
         response += '\n---\n\n';
       });
       
-      // Add helpful suggestions
       response += `💡 **What you can do next:**\n`;
       response += `• Ask specific questions about these documents\n`;
       response += `• Search for specific conditions, medications, or symptoms\n`;
@@ -508,129 +636,34 @@ Respond in a friendly, professional manner and format your responses for easy re
   }
 
   private async processWithOzwell(query: string): Promise<string> {
-    // Make sure we're using the Ozwell key
-    const apiKey = this.ozwellKey || this.config?.apiKey;
-    const endpoint = this.ozwellEndpoint || this.config?.ozwellEndpoint || 'https://ai.bluehive.com/api/v1/completion';
-    
-    console.log('🔧 Ozwell Debug Info:');
-    console.log('  Endpoint:', endpoint);
-    console.log('  API Key source:', this.ozwellKey ? 'ozwellKey' : 'config.apiKey');
-    console.log('  API Key present:', !!apiKey);
-    console.log('  API Key length:', apiKey?.length);
-    console.log('  API Key prefix:', apiKey?.substring(0, 15) + '...');
-    
-    if (!apiKey) {
-      throw new Error('Ozwell API key not found');
-    }
+    const endpoint = this.config?.ozwellEndpoint || 'https://ai.bluehive.com/api/v1/completion';
     
     const systemPrompt = `You are a medical AI assistant with access to MCP tools for medical document processing. Available tools: ${this.availableTools.map(t => t.name).join(', ')}. Provide clear, helpful responses about medical information.`;
     
-    const requestBody = {
-      prompt: `${systemPrompt}\n\nUser: ${query}`,
-      max_tokens: 1000,
-      temperature: 0.7,
-      stream: false,
-    };
-    
-    console.log('📤 Request body:', JSON.stringify(requestBody, null, 2));
-    
     try {
-      const headers = {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      };
-      
-      console.log('📤 Request headers:', {
-        'Content-Type': headers['Content-Type'],
-        'Authorization': `Bearer ${apiKey.substring(0, 20)}...`
-      });
-      
       const response = await fetch(endpoint, {
         method: 'POST',
-        headers,
-        body: JSON.stringify(requestBody),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.config?.apiKey}`,
+        },
+        body: JSON.stringify({
+          prompt: `${systemPrompt}\n\nUser: ${query}`,
+          max_tokens: 1000,
+          temperature: 0.7,
+          stream: false,
+        }),
       });
-  
-      console.log('📥 Response status:', response.status);
-      console.log('📥 Response headers:', Object.fromEntries(response.headers.entries()));
-      
+
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error('📥 Error response body:', errorText);
-        throw new Error(`Ozwell API error: ${response.status} ${response.statusText}. Response: ${errorText}`);
+        throw new Error(`Ozwell API error: ${response.status} ${response.statusText}`);
       }
-  
+
       const data = await response.json();
-      console.log('📥 Success response:', data);
       
-      // Try multiple possible response formats for Ozwell
-      let responseText: string | undefined;
-      
-      // Format 1: choices[0].message.content (ChatGPT/OpenAI style)
-      if (data.choices?.[0]?.message?.content) {
-        responseText = data.choices[0].message.content;
-        console.log('✅ Using choices[0].message.content format');
-      }
-      // Format 2: choices[0].text (completion style)
-      else if (data.choices?.[0]?.text) {
-        responseText = data.choices[0].text;
-        console.log('✅ Using choices[0].text format');
-      }
-      // Format 3: completion (simple completion)
-      else if (data.completion) {
-        responseText = data.completion;
-        console.log('✅ Using completion format');
-      }
-      // Format 4: response
-      else if (data.response) {
-        responseText = data.response;
-        console.log('✅ Using response format');
-      }
-      // Format 5: content
-      else if (data.content) {
-        responseText = data.content;
-        console.log('✅ Using content format');
-      }
-      // Format 6: text
-      else if (data.text) {
-        responseText = data.text;
-        console.log('✅ Using text format');
-      }
-      // Format 7: result
-      else if (data.result) {
-        responseText = data.result;
-        console.log('✅ Using result format');
-      }
-      else {
-        // Log the full response to understand the structure
-        console.error('❌ Could not find response text in any expected field');
-        console.error('📋 Full response structure:', JSON.stringify(data, null, 2));
-        
-        // Try to extract from the message object if it exists
-        if (data.choices?.[0]?.message) {
-          console.log('📋 Message object:', JSON.stringify(data.choices[0].message, null, 2));
-          
-          // Try common field names in the message object
-          const messageObj = data.choices[0].message;
-          responseText = messageObj.content || messageObj.text || messageObj.response || messageObj.assistant || messageObj.reply;
-          
-          if (responseText) {
-            console.log('✅ Found response in message object');
-          }
-        }
-      }
-      
-      if (responseText && typeof responseText === 'string' && responseText.trim().length > 0) {
-        console.log('✅ Successfully extracted response text:', responseText.substring(0, 100) + '...');
-        return responseText.trim();
-      } else {
-        console.error('❌ No valid response text found');
-        console.error('📋 Available fields:', Object.keys(data));
-        return 'No response generated from Ozwell API. The API returned data but in an unexpected format.';
-      }
-      
+      return data.choices?.[0]?.text || data.completion || data.response || 'No response generated';
     } catch (error) {
-      console.error('💥 Ozwell API error:', error);
+      console.error('Ozwell API error:', error);
       throw new Error(`Failed to get response from Ozwell: ${error}`);
     }
   }
@@ -641,19 +674,6 @@ Respond in a friendly, professional manner and format your responses for easy re
 
   public getConfig(): MCPClientConfig | undefined {
     return this.config;
-  }
-
-  public getCurrentProvider(): 'anthropic' | 'ozwell' | undefined {
-    return this.config?.provider;
-  }
-
-  public getAvailableProviders(): ('anthropic' | 'ozwell')[] {
-    const providers: ('anthropic' | 'ozwell')[] = [];
-    if (this.anthropicKey) providers.push('anthropic');
-    if (this.ozwellKey) providers.push('ozwell');
-    
-    console.log('🔑 Available providers based on API keys:', providers);
-    return providers;
   }
 
   public async shutdown(): Promise<void> {
