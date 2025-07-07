@@ -13,6 +13,11 @@ export class MCPClientManager {
   private isInitialized = false;
   private config?: MCPClientConfig;
   
+  // Store both API keys separately
+  private anthropicKey?: string;
+  private ozwellKey?: string;
+  private ozwellEndpoint?: string;
+  
   // Medical MCP connection (Streamable HTTP)
   private medicalConnection?: MedicalServerConnection;
   private medicalOperations?: MedicalDocumentOperations;
@@ -37,15 +42,37 @@ export class MCPClientManager {
     
     this.config = config;
 
+    // Store API keys for both providers if available
+    const settings = (global as any).Meteor?.settings?.private;
+    this.anthropicKey = settings?.ANTHROPIC_API_KEY || process.env.ANTHROPIC_API_KEY;
+    this.ozwellKey = settings?.OZWELL_API_KEY || process.env.OZWELL_API_KEY;
+    this.ozwellEndpoint = settings?.OZWELL_ENDPOINT || process.env.OZWELL_ENDPOINT || config.ozwellEndpoint;
+
+    console.log('🔧 Available API Keys:');
+    console.log('  Anthropic:', !!this.anthropicKey, this.anthropicKey?.substring(0, 15) + '...');
+    console.log('  Ozwell:', !!this.ozwellKey, this.ozwellKey?.substring(0, 15) + '...');
+    console.log('  Ozwell Endpoint:', this.ozwellEndpoint);
+
     try {
       if (config.provider === 'anthropic') {
+        if (!this.anthropicKey) {
+          throw new Error('Anthropic API key not found');
+        }
         console.log('Creating Anthropic client...');
         this.anthropic = new Anthropic({
-          apiKey: config.apiKey,
+          apiKey: this.anthropicKey,
         });
+        // Update config with correct key
+        this.config.apiKey = this.anthropicKey;
         console.log('Anthropic client created successfully');
       } else if (config.provider === 'ozwell') {
-        console.log('Ozwell provider configured with endpoint:', config.ozwellEndpoint);
+        if (!this.ozwellKey) {
+          throw new Error('Ozwell API key not found');
+        }
+        // Update config with correct key and endpoint
+        this.config.apiKey = this.ozwellKey;
+        this.config.ozwellEndpoint = this.ozwellEndpoint;
+        console.log('Ozwell provider configured with endpoint:', this.ozwellEndpoint);
       }
 
       this.isInitialized = true;
@@ -143,8 +170,35 @@ export class MCPClientManager {
       throw new Error('MCP Client not initialized');
     }
 
-    this.config.provider = provider;
-    console.log(`🔄 Switched to ${provider.toUpperCase()} provider`);
+    console.log(`🔄 Switching from ${this.config.provider} to ${provider}`);
+
+    // Validate we have the required API key
+    if (provider === 'anthropic') {
+      if (!this.anthropicKey) {
+        throw new Error('Cannot switch to Anthropic: API key not available');
+      }
+      // Update config with Anthropic key
+      this.config.provider = provider;
+      this.config.apiKey = this.anthropicKey;
+      
+      // Reinitialize Anthropic client if needed
+      if (!this.anthropic) {
+        this.anthropic = new Anthropic({
+          apiKey: this.anthropicKey,
+        });
+      }
+    } else if (provider === 'ozwell') {
+      if (!this.ozwellKey) {
+        throw new Error('Cannot switch to Ozwell: API key not available');
+      }
+      // Update config with Ozwell key and endpoint
+      this.config.provider = provider;
+      this.config.apiKey = this.ozwellKey;
+      this.config.ozwellEndpoint = this.ozwellEndpoint;
+    }
+
+    console.log(`✅ Switched to ${provider.toUpperCase()} provider`);
+    console.log(`🔑 Using API key: ${this.config.apiKey?.substring(0, 15)}...`);
   }
 
   public async processQuery(query: string): Promise<string> {
@@ -454,34 +508,129 @@ Respond in a friendly, professional manner and format your responses for easy re
   }
 
   private async processWithOzwell(query: string): Promise<string> {
-    const endpoint = this.config?.ozwellEndpoint || 'https://ai.bluehive.com/api/v1/completion';
+    // Make sure we're using the Ozwell key
+    const apiKey = this.ozwellKey || this.config?.apiKey;
+    const endpoint = this.ozwellEndpoint || this.config?.ozwellEndpoint || 'https://ai.bluehive.com/api/v1/completion';
+    
+    console.log('🔧 Ozwell Debug Info:');
+    console.log('  Endpoint:', endpoint);
+    console.log('  API Key source:', this.ozwellKey ? 'ozwellKey' : 'config.apiKey');
+    console.log('  API Key present:', !!apiKey);
+    console.log('  API Key length:', apiKey?.length);
+    console.log('  API Key prefix:', apiKey?.substring(0, 15) + '...');
+    
+    if (!apiKey) {
+      throw new Error('Ozwell API key not found');
+    }
     
     const systemPrompt = `You are a medical AI assistant with access to MCP tools for medical document processing. Available tools: ${this.availableTools.map(t => t.name).join(', ')}. Provide clear, helpful responses about medical information.`;
     
+    const requestBody = {
+      prompt: `${systemPrompt}\n\nUser: ${query}`,
+      max_tokens: 1000,
+      temperature: 0.7,
+      stream: false,
+    };
+    
+    console.log('📤 Request body:', JSON.stringify(requestBody, null, 2));
+    
     try {
+      const headers = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      };
+      
+      console.log('📤 Request headers:', {
+        'Content-Type': headers['Content-Type'],
+        'Authorization': `Bearer ${apiKey.substring(0, 20)}...`
+      });
+      
       const response = await fetch(endpoint, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.config?.apiKey}`,
-        },
-        body: JSON.stringify({
-          prompt: `${systemPrompt}\n\nUser: ${query}`,
-          max_tokens: 1000,
-          temperature: 0.7,
-          stream: false,
-        }),
+        headers,
+        body: JSON.stringify(requestBody),
       });
-
-      if (!response.ok) {
-        throw new Error(`Ozwell API error: ${response.status} ${response.statusText}`);
-      }
-
-      const data = await response.json();
+  
+      console.log('📥 Response status:', response.status);
+      console.log('📥 Response headers:', Object.fromEntries(response.headers.entries()));
       
-      return data.choices?.[0]?.text || data.completion || data.response || 'No response generated';
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('📥 Error response body:', errorText);
+        throw new Error(`Ozwell API error: ${response.status} ${response.statusText}. Response: ${errorText}`);
+      }
+  
+      const data = await response.json();
+      console.log('📥 Success response:', data);
+      
+      // Try multiple possible response formats for Ozwell
+      let responseText: string | undefined;
+      
+      // Format 1: choices[0].message.content (ChatGPT/OpenAI style)
+      if (data.choices?.[0]?.message?.content) {
+        responseText = data.choices[0].message.content;
+        console.log('✅ Using choices[0].message.content format');
+      }
+      // Format 2: choices[0].text (completion style)
+      else if (data.choices?.[0]?.text) {
+        responseText = data.choices[0].text;
+        console.log('✅ Using choices[0].text format');
+      }
+      // Format 3: completion (simple completion)
+      else if (data.completion) {
+        responseText = data.completion;
+        console.log('✅ Using completion format');
+      }
+      // Format 4: response
+      else if (data.response) {
+        responseText = data.response;
+        console.log('✅ Using response format');
+      }
+      // Format 5: content
+      else if (data.content) {
+        responseText = data.content;
+        console.log('✅ Using content format');
+      }
+      // Format 6: text
+      else if (data.text) {
+        responseText = data.text;
+        console.log('✅ Using text format');
+      }
+      // Format 7: result
+      else if (data.result) {
+        responseText = data.result;
+        console.log('✅ Using result format');
+      }
+      else {
+        // Log the full response to understand the structure
+        console.error('❌ Could not find response text in any expected field');
+        console.error('📋 Full response structure:', JSON.stringify(data, null, 2));
+        
+        // Try to extract from the message object if it exists
+        if (data.choices?.[0]?.message) {
+          console.log('📋 Message object:', JSON.stringify(data.choices[0].message, null, 2));
+          
+          // Try common field names in the message object
+          const messageObj = data.choices[0].message;
+          responseText = messageObj.content || messageObj.text || messageObj.response || messageObj.assistant || messageObj.reply;
+          
+          if (responseText) {
+            console.log('✅ Found response in message object');
+          }
+        }
+      }
+      
+      if (responseText && typeof responseText === 'string' && responseText.trim().length > 0) {
+        console.log('✅ Successfully extracted response text:', responseText.substring(0, 100) + '...');
+        return responseText.trim();
+      } else {
+        console.error('❌ No valid response text found');
+        console.error('📋 Available fields:', Object.keys(data));
+        return 'No response generated from Ozwell API. The API returned data but in an unexpected format.';
+      }
+      
     } catch (error) {
-      console.error('Ozwell API error:', error);
+      console.error('💥 Ozwell API error:', error);
       throw new Error(`Failed to get response from Ozwell: ${error}`);
     }
   }
@@ -496,6 +645,15 @@ Respond in a friendly, professional manner and format your responses for easy re
 
   public getCurrentProvider(): 'anthropic' | 'ozwell' | undefined {
     return this.config?.provider;
+  }
+
+  public getAvailableProviders(): ('anthropic' | 'ozwell')[] {
+    const providers: ('anthropic' | 'ozwell')[] = [];
+    if (this.anthropicKey) providers.push('anthropic');
+    if (this.ozwellKey) providers.push('ozwell');
+    
+    console.log('🔑 Available providers based on API keys:', providers);
+    return providers;
   }
 
   public async shutdown(): Promise<void> {

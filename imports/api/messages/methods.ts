@@ -353,11 +353,11 @@ Meteor.methods({
       }
       
       try {
-        await mcpManager.switchProvider(provider);
+        mcpManager.switchProvider(provider);
         return `Switched to ${provider.toUpperCase()} provider`;
       } catch (error) {
         console.error('Provider switch error:', error);
-        throw new Meteor.Error('switch-failed', 'Failed to switch provider');
+        throw new Meteor.Error('switch-failed', `Failed to switch provider: ${error.message}`);
       }
     }
     
@@ -379,6 +379,17 @@ Meteor.methods({
   },
 
   'mcp.getAvailableProviders'() {
+    if (!this.isSimulation) {
+      const mcpManager = MCPClientManager.getInstance();
+      
+      if (!mcpManager.isReady()) {
+        return [];
+      }
+      
+      return mcpManager.getAvailableProviders();
+    }
+    
+    // Fallback for simulation
     const settings = Meteor.settings?.private;
     const anthropicKey = settings?.ANTHROPIC_API_KEY || process.env.ANTHROPIC_API_KEY;
     const ozwellKey = settings?.OZWELL_API_KEY || process.env.OZWELL_API_KEY;

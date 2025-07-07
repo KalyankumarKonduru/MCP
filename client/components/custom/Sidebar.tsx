@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useTracker } from 'meteor/react-meteor-data';
 import { Button } from '../ui/Button';
 import { ScrollArea } from '../ui/ScrollArea';
-import { PlusCircle, MessageCircle, X, Trash2, Clock, User } from 'lucide-react';
+import { PlusCircle, X, Trash2, ChevronRight } from 'lucide-react';
 import { cn } from '/imports/lib/utils';
 import { SessionsCollection } from '/imports/api/sessions/sessions';
 
@@ -24,6 +24,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   currentSessionId
 }) => {
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
 
   // Subscribe to sessions list
   const sessions = useTracker(() => {
@@ -47,26 +48,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
     }
   };
 
-  const formatDate = (date: Date) => {
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
-
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays < 7) return `${diffDays}d ago`;
-    return date.toLocaleDateString();
-  };
-
   return (
     <>
       {/* Overlay */}
       {isOpen && (
         <div 
-          className="fixed inset-0 bg-black/30 z-40 md:hidden"
+          className="fixed inset-0 bg-black/20 z-40 md:hidden"
           onClick={onClose}
         />
       )}
@@ -74,112 +61,113 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* Sidebar */}
       <div
         className={cn(
-          "fixed inset-y-0 left-0 w-72 bg-background border-r transform transition-transform duration-200 ease-in-out z-50",
+          "fixed inset-y-0 left-0 w-64 bg-white dark:bg-gray-950 transform transition-transform duration-200 ease-in-out z-50",
           isOpen ? "translate-x-0" : "-translate-x-full"
         )}
+        style={{ borderRight: '1px solid rgb(229, 231, 235)' }}
       >
         <div className="flex flex-col h-full">
           {/* Header */}
-          <div className="flex justify-between items-center p-4 border-b">
-            <h2 className="text-lg font-semibold">Chat History</h2>
-            <Button variant="ghost" size="sm" onClick={onClose}>
+          <div className="flex justify-between items-center px-3 py-4">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Chats</h2>
+            <Button variant="ghost" size="sm" onClick={onClose} className="h-8 w-8 p-0">
               <X className="h-4 w-4" />
             </Button>
           </div>
 
           {/* New Chat Button */}
-          <div className="p-4">
+          <div className="px-3 pb-2">
             <Button
               onClick={() => {
                 onNewChat?.();
                 onClose();
               }}
-              className="w-full flex items-center gap-2"
               variant="outline"
+              className="w-full justify-start h-9 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800"
+              size="sm"
             >
-              <PlusCircle className="h-4 w-4" />
-              New Chat
+              <PlusCircle className="h-4 w-4 mr-2" />
+              New chat
             </Button>
           </div>
 
           {/* Sessions List */}
-          <ScrollArea className="flex-1 px-4">
-            <div className="space-y-2 pb-4">
+          <ScrollArea className="flex-1">
+            <div className="px-2 space-y-1">
               {sessions.length === 0 ? (
-                <div className="text-center text-muted-foreground py-8">
-                  <MessageCircle className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">No chat history yet</p>
-                  <p className="text-xs mt-1">Start a new chat to begin</p>
+                <div className="text-center text-gray-500 dark:text-gray-400 py-8 px-4">
+                  <p className="text-sm">No conversations yet</p>
                 </div>
               ) : (
                 sessions.map((session) => (
                   <div
                     key={session._id}
                     className={cn(
-                      "group relative border rounded-lg transition-all",
-                      session._id === currentSessionId ? "bg-secondary border-primary" : "hover:bg-accent",
+                      "group relative flex items-center rounded-lg cursor-pointer transition-all duration-150",
+                      session._id === currentSessionId 
+                        ? "bg-gray-100 dark:bg-gray-800" 
+                        : "hover:bg-gray-50 dark:hover:bg-gray-800/50",
                       deletingId === session._id && "opacity-50"
                     )}
+                    onClick={() => {
+                      onSelectChat?.(session._id!);
+                      onClose();
+                    }}
+                    onMouseEnter={() => setHoveredId(session._id!)}
+                    onMouseLeave={() => setHoveredId(null)}
                   >
-                    <Button
-                      variant="ghost"
-                      className="w-full justify-start gap-2 pr-12 text-left h-auto py-3 px-3"
-                      onClick={() => {
-                        onSelectChat?.(session._id!);
-                        onClose();
-                      }}
-                      disabled={deletingId === session._id}
-                    >
-                      <MessageCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
-                      <div className="flex-1 min-w-0 space-y-1">
-                        <div className="font-medium truncate">
+                    {/* Arrow icon - always visible on active, hover for others */}
+                    <div className="flex-shrink-0 w-6 h-9 flex items-center justify-center">
+                      <ChevronRight 
+                        className={cn(
+                          "h-3 w-3 text-gray-400 transition-opacity duration-150",
+                          session._id === currentSessionId 
+                            ? "opacity-100" 
+                            : hoveredId === session._id 
+                              ? "opacity-60" 
+                              : "opacity-0"
+                        )} 
+                      />
+                    </div>
+
+                    {/* Content */}
+                    <div className="flex-1 min-w-0 py-2 pr-2">
+                      <div className="flex items-center justify-between">
+                        <span className={cn(
+                          "text-sm truncate",
+                          session._id === currentSessionId 
+                            ? "text-gray-900 dark:text-white font-medium" 
+                            : "text-gray-700 dark:text-gray-300"
+                        )}>
                           {session.title}
-                        </div>
-                        <div className="text-xs text-muted-foreground space-y-1">
-                          <div className="flex items-center gap-2">
-                            <Clock className="h-3 w-3" />
-                            <span>{formatDate(session.updatedAt)}</span>
-                            {session.metadata?.patientId && (
-                              <>
-                                <span>•</span>
-                                <span className="flex items-center gap-1">
-                                  <User className="h-3 w-3" />
-                                  {session.metadata.patientId}
-                                </span>
-                              </>
-                            )}
-                          </div>
-                          {session.messageCount > 0 && (
-                            <div>{session.messageCount} message{session.messageCount !== 1 ? 's' : ''}</div>
-                          )}
-                        </div>
+                        </span>
+
+                        {/* Delete button - only show on hover */}
+                        {hoveredId === session._id && session._id !== currentSessionId && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 hover:bg-red-100 dark:hover:bg-red-900/30 hover:text-red-600 dark:hover:text-red-400 ml-1"
+                            onClick={(e) => handleDeleteChat(e, session._id!)}
+                            disabled={deletingId === session._id}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        )}
                       </div>
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className={cn(
-                        "absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 p-0",
-                        "opacity-0 group-hover:opacity-100 transition-opacity",
-                        "hover:bg-destructive hover:text-destructive-foreground"
+
+                      {/* Patient info - subtle, no badge */}
+                      {session.metadata?.patientId && (
+                        <div className="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">
+                          Patient: {session.metadata.patientId}
+                        </div>
                       )}
-                      onClick={(e) => handleDeleteChat(e, session._id!)}
-                      disabled={deletingId === session._id}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    </div>
                   </div>
                 ))
               )}
             </div>
           </ScrollArea>
-
-          {/* Footer with session count */}
-          {sessions.length > 0 && (
-            <div className="p-4 border-t text-xs text-muted-foreground text-center">
-              {sessions.length} chat{sessions.length !== 1 ? 's' : ''} in history
-            </div>
-          )}
         </div>
       </div>
     </>

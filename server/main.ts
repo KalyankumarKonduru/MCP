@@ -13,16 +13,17 @@ Meteor.startup(async () => {
   const mcpManager = MCPClientManager.getInstance();
   
   try {
-    // Try to get API keys from multiple sources
+    // Get API keys from multiple sources
     const settings = Meteor.settings?.private;
     
     const anthropicKey = settings?.ANTHROPIC_API_KEY || process.env.ANTHROPIC_API_KEY;
     const ozwellKey = settings?.OZWELL_API_KEY || process.env.OZWELL_API_KEY;
     const ozwellEndpoint = settings?.OZWELL_ENDPOINT || process.env.OZWELL_ENDPOINT || 'https://ai.bluehive.com/api/v1/completion';
     
-    console.log('Anthropic key found:', !!anthropicKey);
-    console.log('Ozwell key found:', !!ozwellKey);
-    console.log('Ozwell endpoint:', ozwellEndpoint);
+    console.log('🔑 API Key Status:');
+    console.log('  Anthropic key found:', !!anthropicKey, anthropicKey?.substring(0, 15) + '...');
+    console.log('  Ozwell key found:', !!ozwellKey, ozwellKey?.substring(0, 15) + '...');
+    console.log('  Ozwell endpoint:', ozwellEndpoint);
     
     if (!anthropicKey && !ozwellKey) {
       console.warn('⚠️  No API key found. Please set ANTHROPIC_API_KEY or OZWELL_API_KEY in your settings.json or environment variables.');
@@ -31,27 +32,38 @@ Meteor.startup(async () => {
     }
 
     // Determine default provider (prefer Anthropic, fallback to Ozwell)
-    const provider = anthropicKey ? 'anthropic' : 'ozwell';
-    const apiKey = anthropicKey || ozwellKey;
+    let provider: 'anthropic' | 'ozwell';
+    let apiKey: string;
 
-    if (!apiKey) {
-      console.warn('⚠️  API key is empty or undefined');
+    if (anthropicKey) {
+      provider = 'anthropic';
+      apiKey = anthropicKey;
+    } else if (ozwellKey) {
+      provider = 'ozwell';
+      apiKey = ozwellKey;
+    } else {
+      console.warn('⚠️  No valid API keys found');
       return;
     }
 
-    // Initialize main MCP client for LLM
+    // Initialize main MCP client with the default provider
     await mcpManager.initialize({
-      provider: provider as 'anthropic' | 'ozwell',
-      apiKey: apiKey,
-      ozwellEndpoint: ozwellEndpoint,
+      provider,
+      apiKey,
+      ozwellEndpoint,
     });
     
     console.log('✅ Server started successfully with MCP integration');
     console.log(`🤖 Using ${provider.toUpperCase()} as the default AI provider`);
     console.log('💾 Session management enabled with Atlas MongoDB');
     
+    // Show provider switching availability
     if (anthropicKey && ozwellKey) {
       console.log('🔄 Both providers available - you can switch between them in the chat');
+      console.log('   Anthropic: Claude models');
+      console.log('   Ozwell: Bluehive AI models');
+    } else {
+      console.log(`🔒 Only ${provider.toUpperCase()} provider available`);
     }
 
     // Connect to medical MCP server via Streamable HTTP
