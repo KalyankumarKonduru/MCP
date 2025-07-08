@@ -7,55 +7,27 @@ import '/imports/api/sessions/publications';
 import './startup-sessions';
 
 Meteor.startup(async () => {
-<<<<<<< Updated upstream
-  console.log('Starting MCP Pilot server with session management...');
-=======
-<<<<<<< Updated upstream
-  console.log('Starting MCP Pilot server...');
-=======
   console.log('🚀 Starting MCP Pilot server with Dynamic Tool Selection...');
->>>>>>> Stashed changes
->>>>>>> Stashed changes
   
   const mcpManager = MCPClientManager.getInstance();
   
   try {
-<<<<<<< Updated upstream
-    // Get API keys from multiple sources
-=======
-<<<<<<< Updated upstream
-    // Try to get API keys from multiple sources
-=======
     // Get API keys
->>>>>>> Stashed changes
->>>>>>> Stashed changes
     const settings = Meteor.settings?.private;
     const anthropicKey = settings?.ANTHROPIC_API_KEY || process.env.ANTHROPIC_API_KEY;
     const ozwellKey = settings?.OZWELL_API_KEY || process.env.OZWELL_API_KEY;
+    const ozwellEndpoint = settings?.OZWELL_ENDPOINT || process.env.OZWELL_ENDPOINT;
     
-<<<<<<< Updated upstream
     console.log('🔑 API Key Status:');
     console.log('  Anthropic key found:', !!anthropicKey, anthropicKey?.substring(0, 15) + '...');
     console.log('  Ozwell key found:', !!ozwellKey, ozwellKey?.substring(0, 15) + '...');
     console.log('  Ozwell endpoint:', ozwellEndpoint);
-=======
-<<<<<<< Updated upstream
-    console.log('Anthropic key found:', !!anthropicKey);
-    console.log('Ozwell key found:', !!ozwellKey);
-    console.log('Ozwell endpoint:', ozwellEndpoint);
-=======
-    console.log('🔑 API Key Status:');
-    console.log('  Anthropic key found:', !!anthropicKey);
-    console.log('  Ozwell key found:', !!ozwellKey);
->>>>>>> Stashed changes
->>>>>>> Stashed changes
     
     if (!anthropicKey && !ozwellKey) {
       console.warn('⚠️  No API key found for dynamic tool selection.');
       return;
     }
 
-<<<<<<< Updated upstream
     // Determine default provider (prefer Anthropic, fallback to Ozwell)
     let provider: 'anthropic' | 'ozwell';
     let apiKey: string;
@@ -78,7 +50,7 @@ Meteor.startup(async () => {
       ozwellEndpoint,
     });
     
-    console.log('✅ Server started successfully with MCP integration');
+    console.log('✅ MCP Client initialized with dynamic tool selection');
     console.log(`🤖 Using ${provider.toUpperCase()} as the default AI provider`);
     console.log('💾 Session management enabled with Atlas MongoDB');
     
@@ -90,33 +62,6 @@ Meteor.startup(async () => {
     } else {
       console.log(`🔒 Only ${provider.toUpperCase()} provider available`);
     }
-=======
-    // Prefer Anthropic for dynamic tool selection
-    let provider: 'anthropic' | 'ozwell';
-    let apiKey: string;
-
-    if (anthropicKey) {
-      provider = 'anthropic';
-      apiKey = anthropicKey;
-      console.log('✅ Using Anthropic for dynamic tool selection');
-    } else if (ozwellKey) {
-      provider = 'ozwell';
-      apiKey = ozwellKey;
-      console.log('⚠️  Using Ozwell (limited tool selection capabilities)');
-    } else {
-      console.warn('⚠️  No valid API keys found');
-      return;
-    }
-
-    // Initialize MCP client
-    await mcpManager.initialize({
-      provider,
-      apiKey,
-      ozwellEndpoint: settings?.OZWELL_ENDPOINT || process.env.OZWELL_ENDPOINT
-    });
-    
-    console.log('✅ MCP Client initialized with dynamic tool selection');
->>>>>>> Stashed changes
 
     // Connect to medical MCP server
     const mcpServerUrl = settings?.MEDICAL_MCP_SERVER_URL || 
