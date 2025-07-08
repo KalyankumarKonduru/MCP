@@ -1,5 +1,12 @@
+<<<<<<< Updated upstream
 // Complete replacement for imports/api/mcp/mcpClientManager.ts
 
+=======
+<<<<<<< Updated upstream
+// imports/api/mcp/mcpClientManager.ts - Complete file
+=======
+>>>>>>> Stashed changes
+>>>>>>> Stashed changes
 import Anthropic from '@anthropic-ai/sdk';
 import { MedicalServerConnection, MedicalDocumentOperations, createMedicalOperations } from './medicalServerConnection';
 
@@ -30,35 +37,34 @@ export class MCPClientManager {
   }
 
   public async initialize(config: MCPClientConfig): Promise<void> {
-    console.log('Initializing MCP Client with config:', { 
-      provider: config.provider, 
-      hasApiKey: !!config.apiKey,
-      apiKeyLength: config.apiKey?.length,
-      ozwellEndpoint: config.ozwellEndpoint
-    });
-    
+    console.log('🤖 Initializing MCP Client with Dynamic Tool Selection');
     this.config = config;
 
     try {
       if (config.provider === 'anthropic') {
+<<<<<<< Updated upstream
         console.log('Creating Anthropic client with tool calling support...');
+=======
+<<<<<<< Updated upstream
+        console.log('Creating Anthropic client...');
+=======
+>>>>>>> Stashed changes
+>>>>>>> Stashed changes
         this.anthropic = new Anthropic({
           apiKey: config.apiKey,
         });
-        console.log('Anthropic client created successfully');
-      } else if (config.provider === 'ozwell') {
-        console.log('Ozwell provider configured with endpoint:', config.ozwellEndpoint);
+        console.log('✅ Anthropic client initialized');
       }
 
       this.isInitialized = true;
-      console.log('✅ MCP Client initialized successfully with provider:', config.provider);
+      console.log(`✅ MCP Client ready with provider: ${config.provider}`);
     } catch (error) {
       console.error('❌ Failed to initialize MCP client:', error);
       throw error;
     }
   }
 
-  // Connect to medical MCP server via Streamable HTTP
+  // Connect to medical MCP server and get all available tools
   public async connectToMedicalServer(): Promise<void> {
     try {
       const settings = (global as any).Meteor?.settings?.private;
@@ -66,35 +72,40 @@ export class MCPClientManager {
                            process.env.MEDICAL_MCP_SERVER_URL || 
                            'http://localhost:3001';
       
-      console.log(`📄 Attempting to connect to Medical MCP Server at: ${mcpServerUrl}`);
+      console.log(`🏥 Connecting to Medical MCP Server at: ${mcpServerUrl}`);
       
       this.medicalConnection = new MedicalServerConnection(mcpServerUrl);
       await this.medicalConnection.connect();
       this.medicalOperations = createMedicalOperations(this.medicalConnection);
       
-      // List available tools after connection
-      try {
-        const toolsResult = await this.medicalConnection.listTools();
-        this.availableTools = toolsResult.tools || [];
-        console.log(`✅ Medical MCP Server connected via Streamable HTTP with ${this.availableTools.length} tools available`);
-        
-        // Log available tools
-        if (this.availableTools.length > 0) {
-          console.log('📋 Available MCP Tools:');
-          this.availableTools.forEach((tool, index) => {
-            console.log(`   ${index + 1}. ${tool.name} - ${tool.description}`);
-          });
-        }
-      } catch (error) {
-        console.error('Failed to list tools:', error);
-      }
+      // Get all available tools
+      const toolsResult = await this.medicalConnection.listTools();
+      this.availableTools = toolsResult.tools || [];
+      
+      console.log(`✅ Connected with ${this.availableTools.length} tools available`);
+      this.logAvailableTools();
       
     } catch (error) {
+<<<<<<< Updated upstream
       console.error('❌ Medical MCP Server HTTP connection failed:', error);
+<<<<<<< Updated upstream
+=======
+      console.error('   Document processing features will be disabled.');
+      console.error('   Make sure to:');
+      console.error('   1. Start the MCP server in HTTP mode: npm run start:http');
+      console.error('   2. Check the MCP server URL in settings.json is correct');
+      console.error('   3. Verify the MCP server is accessible at the configured URL');
+      console.error('   4. Check that MongoDB and OpenAI credentials are configured in the MCP server');
+      console.error('   The server is running but MCP connection failed. Check server logs.');
+=======
+      console.error('❌ Medical MCP Server connection failed:', error);
+>>>>>>> Stashed changes
+>>>>>>> Stashed changes
       throw error;
     }
   }
 
+<<<<<<< Updated upstream
   // Convert MCP tools to Anthropic tool format
   private convertMCPToolsToAnthropicFormat(): any[] {
     if (!this.availableTools || this.availableTools.length === 0) {
@@ -422,6 +433,9 @@ RESPONSE STYLE:
     return providers;
   }
 
+=======
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
   // Get available tools
   public getAvailableTools(): any[] {
     return this.availableTools;
@@ -436,8 +450,313 @@ RESPONSE STYLE:
   public getMedicalOperations(): MedicalDocumentOperations {
     if (!this.medicalOperations) {
       throw new Error('Medical MCP server not connected');
+=======
+  // Convert MCP tools to Anthropic tool format with enhanced descriptions
+  private convertMCPToolsToAnthropicFormat(): any[] {
+    if (!this.availableTools || this.availableTools.length === 0) {
+      return [];
     }
-    return this.medicalOperations;
+
+    return this.availableTools.map(tool => {
+      // Enhanced descriptions to help Claude choose correctly
+      let enhancedDescription = tool.description;
+      
+      if (tool.name.includes('Patient') || tool.name.includes('Observation') || 
+          tool.name.includes('Medication') || tool.name.includes('Condition') || 
+          tool.name.includes('Encounter')) {
+        enhancedDescription = `[EPIC FHIR] ${tool.description}. Use this to search live patient data in the Epic EHR system.`;
+      } else if (tool.name.includes('Document') || tool.name.includes('upload') || 
+                 tool.name.includes('search')) {
+        enhancedDescription = `[DOCUMENT DB] ${tool.description}. Use this to search uploaded medical documents and files.`;
+      } else if (tool.name.includes('Embedding') || tool.name.includes('semantic')) {
+        enhancedDescription = `[SEMANTIC] ${tool.description}. Use this for advanced text analysis and similarity search.`;
+      } else if (tool.name.includes('Medical') || tool.name.includes('Entity') || 
+                 tool.name.includes('Insight')) {
+        enhancedDescription = `[ANALYSIS] ${tool.description}. Use this for medical text analysis and insights.`;
+      }
+
+      return {
+        name: tool.name,
+        description: enhancedDescription,
+        input_schema: {
+          type: "object",
+          properties: tool.inputSchema?.properties || {},
+          required: tool.inputSchema?.required || []
+        }
+      };
+    });
+  }
+
+  // Main query processing with dynamic tool selection
+  public async processQueryWithDynamicToolSelection(
+    query: string,
+    context?: { documentId?: string; patientId?: string; sessionId?: string }
+  ): Promise<string> {
+    if (!this.isInitialized || !this.config) {
+      throw new Error('MCP Client not initialized');
+    }
+
+    if (this.config.provider !== 'anthropic' || !this.anthropic) {
+      throw new Error('Dynamic tool selection requires Anthropic provider');
+    }
+
+    try {
+      console.log(`🧠 Processing query with dynamic tool selection: "${query}"`);
+
+      // Convert all MCP tools to Anthropic format
+      const anthropicTools = this.convertMCPToolsToAnthropicFormat();
+      console.log(`🔧 Available tools for Claude: ${anthropicTools.length} total`);
+
+      // Build enhanced system prompt
+      const systemPrompt = this.buildEnhancedSystemPrompt(context);
+
+      // Build conversation context
+      let messages: any[] = [{ role: 'user', content: query }];
+
+      // Add conversation context if available
+      if (context?.sessionId) {
+        const contextData = await this.getSessionContext(context.sessionId);
+        if (contextData && contextData.length > 0) {
+          messages = [...contextData, { role: 'user', content: query }];
+        }
+      }
+
+      // Initial message to Claude with all tools available
+      let response = await this.anthropic.messages.create({
+        model: 'claude-3-5-sonnet-20241022',
+        max_tokens: 3000,
+        system: systemPrompt,
+        messages: messages,
+        tools: anthropicTools.length > 0 ? anthropicTools : undefined,
+      });
+
+      console.log(`📝 Claude response type: ${response.content[0].type}`);
+
+      // Handle tool use iterations
+      let iterationCount = 0;
+      const maxIterations = 5;
+
+      while (response.stop_reason === 'tool_use' && iterationCount < maxIterations) {
+        iterationCount++;
+        console.log(`🔧 Claude tool iteration ${iterationCount}`);
+        
+        // Extract tool calls
+        const toolCalls = response.content.filter(block => block.type === 'tool_use');
+        console.log(`🔧 Claude requested ${toolCalls.length} tool calls`);
+
+        // Add Claude's response to conversation
+        messages.push({
+          role: 'assistant',
+          content: response.content
+        });
+
+        // Execute each tool call
+        const toolResults = [];
+        for (const toolCall of toolCalls) {
+          console.log(`🔧 Executing: ${toolCall.name}`, toolCall.input);
+          
+          try {
+            const toolResult = await this.callMCPTool(toolCall.name, toolCall.input);
+            
+            // Format tool result for Claude
+            let resultContent = this.formatToolResultForClaude(toolResult);
+
+            toolResults.push({
+              role: 'user',
+              content: [
+                {
+                  type: 'tool_result',
+                  tool_use_id: toolCall.id,
+                  content: resultContent
+                }
+              ]
+            });
+
+            console.log(`✅ Tool ${toolCall.name} executed successfully`);
+          } catch (error) {
+            console.error(`❌ Tool ${toolCall.name} failed:`, error);
+            
+            toolResults.push({
+              role: 'user',
+              content: [
+                {
+                  type: 'tool_result',
+                  tool_use_id: toolCall.id,
+                  content: `Error executing ${toolCall.name}: ${error.message}`,
+                  is_error: true
+                }
+              ]
+            });
+          }
+        }
+
+        // Add tool results to conversation
+        messages.push(...toolResults);
+
+        // Get Claude's response to the tool results
+        response = await this.anthropic.messages.create({
+          model: 'claude-3-5-sonnet-20241022',
+          max_tokens: 3000,
+          system: systemPrompt,
+          messages: messages,
+          tools: anthropicTools.length > 0 ? anthropicTools : undefined,
+        });
+
+        console.log(`📝 Claude follow-up response type: ${response.content[0].type}`);
+      }
+
+      // Extract final text response
+      const textContent = response.content.find(block => block.type === 'text');
+      if (textContent) {
+        console.log(`✅ Dynamic tool selection completed after ${iterationCount} iterations`);
+        return textContent.text;
+      }
+
+      return 'I processed your request but couldn\'t generate a final response. Please try rephrasing your question.';
+
+    } catch (error) {
+      console.error('❌ Dynamic tool selection failed:', error);
+      throw error;
+    }
+  }
+
+  private buildEnhancedSystemPrompt(context?: any): string {
+    let systemPrompt = `You are an intelligent medical AI assistant with access to multiple data sources and tools.
+
+🎯 YOUR MISSION:
+Analyze each user query and intelligently choose the right tools to provide accurate, helpful medical information.
+
+🔧 AVAILABLE TOOL CATEGORIES:
+
+**[EPIC FHIR] - Live EHR Patient Data:**
+- searchPatients: Find patients in Epic EHR system by name, DOB, etc.
+- getPatientDetails: Get detailed patient information from Epic
+- getPatientObservations: Get lab results, vitals from Epic EHR
+- getPatientMedications: Get current/past medications from Epic
+- getPatientConditions: Get diagnoses/conditions from Epic EHR
+- getPatientEncounters: Get visits/encounters from Epic EHR
+
+**[DOCUMENT DB] - Uploaded Medical Documents:**
+- uploadDocument: Process and store medical documents (PDFs, images)
+- searchDocuments: Search through uploaded medical documents
+- listDocuments: List available uploaded documents
+
+**[ANALYSIS] - Medical Intelligence:**
+- extractMedicalEntities: Extract medical terms from text
+- findSimilarCases: Find similar medical cases
+- analyzePatientHistory: Analyze patient medical history
+- getMedicalInsights: Get medical insights and recommendations
+
+**[SEMANTIC] - Advanced Search:**
+- generateEmbeddingLocal: Create text embeddings for search
+- chunkAndEmbedDocument: Process large documents
+- semanticSearchLocal: Semantic similarity search
+
+🧠 TOOL SELECTION LOGIC:
+
+When users ask about:
+- "patients named X" or "find patient Y" → Use Epic FHIR tools (searchPatients)
+- "X's lab results" or "medications for Y" → Use Epic FHIR (get patient data)
+- "search documents" or "uploaded files" → Use Document DB tools
+- "medical analysis" or "similar cases" → Use Analysis tools
+- "semantic search" or "embedding" → Use Semantic tools
+
+🎯 RESPONSE GUIDELINES:
+1. Choose tools based on WHERE the data lives (Epic EHR vs uploaded documents)
+2. Use Epic FHIR for live patient data from hospital systems
+3. Use Document DB for uploaded PDFs and medical files
+4. Provide clear, medically accurate responses
+5. Always explain your reasoning when using tools
+6. If no relevant data found, suggest alternative approaches
+
+💡 EXAMPLES:
+- "Find patients named Smith" → searchPatients
+- "What are John's lab results?" → searchPatients → getPatientObservations  
+- "Search uploaded documents about diabetes" → searchDocuments
+- "Analyze similar cases to this condition" → findSimilarCases`;
+
+    if (context?.patientId) {
+      systemPrompt += `\n\n🏥 CURRENT CONTEXT: Working with patient: ${context.patientId}`;
+    }
+
+    if (context?.sessionId) {
+      systemPrompt += `\n\n💬 SESSION: ${context.sessionId}`;
+    }
+
+    return systemPrompt;
+  }
+
+  private formatToolResultForClaude(toolResult: any): string {
+    try {
+      if (toolResult?.content?.[0]?.text) {
+        // Try to parse and reformat for better readability
+        try {
+          const parsed = JSON.parse(toolResult.content[0].text);
+          return JSON.stringify(parsed, null, 2);
+        } catch {
+          return toolResult.content[0].text;
+        }
+      } else if (typeof toolResult === 'object') {
+        return JSON.stringify(toolResult, null, 2);
+      } else {
+        return String(toolResult);
+      }
+    } catch (error) {
+      return `Tool result formatting error: ${error.message}`;
+    }
+  }
+
+  private async getSessionContext(sessionId: string): Promise<any[] | null> {
+    // This integrates with your session management
+    // For now, return null - you can enhance this later
+    return null;
+  }
+
+  private logAvailableTools(): void {
+    console.log('\n🔧 Available Tools by Category:');
+    
+    const epicTools = this.availableTools.filter(t => 
+      t.name.includes('Patient') || t.name.includes('Observation') || 
+      t.name.includes('Medication') || t.name.includes('Condition') || 
+      t.name.includes('Encounter')
+    );
+    
+    const documentTools = this.availableTools.filter(t => 
+      t.name.includes('Document') || t.name.includes('upload') || 
+      (t.name.includes('search') && !t.name.includes('Patient'))
+    );
+    
+    const analysisTools = this.availableTools.filter(t => 
+      t.name.includes('Medical') || t.name.includes('Entity') || 
+      t.name.includes('Insight') || t.name.includes('Similar') || 
+      t.name.includes('analyze')
+    );
+    
+    const semanticTools = this.availableTools.filter(t => 
+      t.name.includes('Embedding') || t.name.includes('semantic') || 
+      t.name.includes('chunk')
+    );
+
+    if (epicTools.length > 0) {
+      console.log('🏥 Epic FHIR Tools:');
+      epicTools.forEach(tool => console.log(`   • ${tool.name}`));
+    }
+    
+    if (documentTools.length > 0) {
+      console.log('📄 Document Tools:');
+      documentTools.forEach(tool => console.log(`   • ${tool.name}`));
+    }
+    
+    if (analysisTools.length > 0) {
+      console.log('🧬 Analysis Tools:');
+      analysisTools.forEach(tool => console.log(`   • ${tool.name}`));
+    }
+    
+    if (semanticTools.length > 0) {
+      console.log('🔍 Semantic Tools:');
+      semanticTools.forEach(tool => console.log(`   • ${tool.name}`));
+>>>>>>> Stashed changes
+    }
   }
 
   // Call a specific MCP tool
@@ -459,7 +778,164 @@ RESPONSE STYLE:
     }
   }
 
+<<<<<<< Updated upstream
   // Helper methods
+=======
+<<<<<<< Updated upstream
+=======
+  // Helper methods
+  public getAvailableTools(): any[] {
+    return this.availableTools;
+  }
+
+  public isToolAvailable(toolName: string): boolean {
+    return this.availableTools.some(tool => tool.name === toolName);
+  }
+
+  public getMedicalOperations(): MedicalDocumentOperations {
+    if (!this.medicalOperations) {
+      throw new Error('Medical MCP server not connected');
+    }
+    return this.medicalOperations;
+  }
+
+  // Provider management
+>>>>>>> Stashed changes
+  public async switchProvider(provider: 'anthropic' | 'ozwell'): Promise<void> {
+    if (!this.config) {
+      throw new Error('MCP Client not initialized');
+    }
+<<<<<<< Updated upstream
+
+=======
+>>>>>>> Stashed changes
+    this.config.provider = provider;
+    console.log(`🔄 Switched to ${provider.toUpperCase()} provider`);
+  }
+
+<<<<<<< Updated upstream
+  public async processQuery(query: string): Promise<string> {
+    console.log('Processing query with provider:', this.config?.provider);
+    
+    if (!this.isInitialized || !this.config) {
+      const error = 'MCP Client not initialized';
+      console.error(error);
+      throw new Error(error);
+    }
+
+    try {
+      if (this.config.provider === 'anthropic' && this.anthropic) {
+        console.log('Using Anthropic for processing...');
+        return await this.processWithAnthropic(query);
+      } else if (this.config.provider === 'ozwell') {
+        console.log('Using Ozwell for processing...');
+        return await this.processWithOzwell(query);
+      }
+      throw new Error('No LLM provider configured');
+    } catch (error) {
+      console.error('Error processing query:', error);
+      throw error;
+    }
+  }
+
+  // Enhanced query processing with automatic tool calling and context
+  public async processQueryWithMedicalContext(
+    query: string,
+    context?: { documentId?: string; patientId?: string; sessionId?: string }
+  ): Promise<string> {
+    if (!this.isInitialized || !this.config) {
+      throw new Error('MCP Client not initialized');
+    }
+
+    try {
+      let enhancedQuery = query;
+      let medicalContext = '';
+      let toolResults: any[] = [];
+
+      console.log(`🧠 Processing query with medical context: "${query}"`);
+
+      // 1. DETECT AND EXECUTE SEARCH QUERIES AUTOMATICALLY
+      if (this.isDirectSearchQuery(query)) {
+        try {
+          const searchTerms = this.extractSearchTerms(query);
+          console.log(`🔍 Auto-executing search for: "${searchTerms}"`);
+          
+          const searchResult = await this.callMCPTool('searchDocuments', {
+            query: searchTerms,
+            limit: 5,
+            threshold: 0.3,
+            searchType: 'hybrid',
+            filter: context?.patientId ? { patientId: context.patientId } : {}
+          });
+          
+          toolResults.push({
+            tool: 'searchDocuments',
+            query: searchTerms,
+            result: searchResult
+          });
+          
+          // Format results and return immediately for search queries
+          return this.formatSearchResults(searchResult, query, searchTerms);
+          
+        } catch (error) {
+          console.error('Auto-search failed:', error);
+          return `I tried to search for "${query}" but encountered an error. Please try rephrasing your search or ensure medical documents have been uploaded to the system.`;
+        }
+      }
+
+      // 2. GATHER MEDICAL CONTEXT for general queries
+      if (this.medicalOperations && this.isMedicalQuery(query)) {
+        try {
+          console.log(`🏥 Gathering medical context for query`);
+          const searchResult = await this.medicalOperations.searchDocuments(query, {
+            filter: context?.patientId ? { patientId: context.patientId } : {},
+            limit: 3,
+            threshold: 0.4
+          });
+          
+          if (searchResult.success && searchResult.results && searchResult.results.length > 0) {
+            medicalContext = `\n\n**Relevant Medical Information Found:**\n${this.summarizeSearchResults(searchResult.results)}`;
+            toolResults.push({
+              tool: 'contextSearch',
+              result: searchResult
+            });
+          }
+        } catch (error) {
+          console.error('Error fetching medical context:', error);
+        }
+      }
+
+      // 3. BUILD ENHANCED PROMPT with context and available tools
+      if (toolResults.length > 0 && toolResults[0].tool === 'contextSearch') {
+        enhancedQuery = `User Query: ${query}\n\nI found some relevant medical information that might help answer this question:\n${medicalContext}\n\nPlease provide a helpful answer based on this medical context and your knowledge.`;
+      } else {
+        enhancedQuery = query + medicalContext;
+      }
+
+      // Add available tools context for the LLM
+      const toolsContext = this.buildToolsContext(query);
+      if (toolsContext) {
+        enhancedQuery += `\n\nNote: I have access to medical document tools if you need me to search for specific information: ${toolsContext}`;
+      }
+
+      // 4. PROCESS WITH LLM
+      console.log(`🤖 Sending to LLM provider: ${this.config.provider}`);
+      
+      if (this.config.provider === 'anthropic' && this.anthropic) {
+        return await this.processWithAnthropic(enhancedQuery);
+      } else if (this.config.provider === 'ozwell') {
+        return await this.processWithOzwell(enhancedQuery);
+      }
+      
+      throw new Error('No LLM provider configured');
+    } catch (error) {
+      console.error('Error processing query with medical context:', error);
+      throw error;
+    }
+  }
+
+  // Helper methods for query processing
+>>>>>>> Stashed changes
   private isDirectSearchQuery(query: string): boolean {
     const searchPatterns = [
       /^search\s+for\s+/i,
@@ -471,18 +947,22 @@ RESPONSE STYLE:
       /records?\s+for/i,
       /files?\s+for/i
     ];
-    
-    return searchPatterns.some(pattern => pattern.test(query));
+=======
+  public getCurrentProvider(): 'anthropic' | 'ozwell' | undefined {
+    return this.config?.provider;
   }
 
-  private isMedicalQuery(query: string): boolean {
-    const medicalKeywords = [
-      'diagnosis', 'medication', 'prescription', 'lab', 'test', 'result',
-      'patient', 'medical', 'health', 'treatment', 'symptom', 'condition',
-      'blood', 'pressure', 'glucose', 'cholesterol', 'vital', 'sign',
-      'doctor', 'physician', 'hospital', 'clinic', 'surgery', 'procedure'
-    ];
+  public getAvailableProviders(): string[] {
+    const settings = (global as any).Meteor?.settings?.private;
+    const anthropicKey = settings?.ANTHROPIC_API_KEY || process.env.ANTHROPIC_API_KEY;
+    const ozwellKey = settings?.OZWELL_API_KEY || process.env.OZWELL_API_KEY;
+>>>>>>> Stashed changes
     
+    const providers = [];
+    if (anthropicKey) providers.push('anthropic');
+    if (ozwellKey) providers.push('ozwell');
+    
+<<<<<<< Updated upstream
     const lowerQuery = query.toLowerCase();
     return medicalKeywords.some(keyword => lowerQuery.includes(keyword));
   }
@@ -666,6 +1146,9 @@ Respond in a friendly, professional manner and format your responses for easy re
       console.error('Ozwell API error:', error);
       throw new Error(`Failed to get response from Ozwell: ${error}`);
     }
+=======
+    return providers;
+>>>>>>> Stashed changes
   }
 
   public isReady(): boolean {

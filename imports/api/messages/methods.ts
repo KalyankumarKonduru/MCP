@@ -289,6 +289,7 @@ Meteor.methods({
       }
       
       try {
+<<<<<<< Updated upstream
         // Get context if sessionId provided
         let contextPrompt = '';
         let contextData = {};
@@ -304,6 +305,10 @@ Meteor.methods({
           
           console.log(`🧠 Processing with context - Tokens: ${context.totalTokens}, Messages: ${context.recentMessages.length}`);
         }
+=======
+<<<<<<< Updated upstream
+        const sessionId = this.connection?.id || 'default';
+>>>>>>> Stashed changes
         
         // Check if this looks like a search query and handle it specially
         if (isSearchQuery(query)) {
@@ -325,14 +330,42 @@ Meteor.methods({
         }
         
         // Otherwise use regular LLM processing with enhanced medical context
+<<<<<<< Updated upstream
         const response = await mcpManager.processQueryWithMedicalContext(enhancedQuery, contextData);
         
         // Extract and update context
+=======
+        return await mcpManager.processQueryWithMedicalContext(query, { sessionId });
+=======
+        console.log(`🧠 Processing query with dynamic tool selection: "${query}"`);
+        
+        // Build context data
+        let contextData = {};
+        if (sessionId) {
+          const context = await ContextManager.getContext(sessionId);
+          contextData = {
+            sessionId,
+            patientId: context.patientContext,
+            documentIds: context.documentContext
+          };
+          
+          console.log(`🧠 Context loaded - Tokens: ${context.totalTokens}, Messages: ${context.recentMessages.length}`);
+        }
+        
+        // Use dynamic tool selection - let Claude choose the right tools
+        const response = await mcpManager.processQueryWithDynamicToolSelection(query, contextData);
+        
+        // Update context after processing
+>>>>>>> Stashed changes
         if (sessionId) {
           await extractAndUpdateContext(query, response, sessionId);
         }
         
         return response;
+<<<<<<< Updated upstream
+=======
+>>>>>>> Stashed changes
+>>>>>>> Stashed changes
       } catch (error) {
         console.error('MCP processing error:', error);
         return 'I encountered an error while processing your request. Please try again.';
