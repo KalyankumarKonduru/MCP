@@ -73,9 +73,14 @@ Meteor.startup(async () => {
         console.log(`🏥 Connecting to Medical MCP Server for tool discovery...`);
         await mcpManager.connectToMedicalServer();
         console.log('✅ All medical tools discovered and ready for dynamic selection');
+        console.log(`🏥 Connecting to Aidbox MCP Server...`);
+        await mcpManager.connectToAidboxServer();
+        console.log('✅ Aidbox FHIR tools available');
       } catch (error) {
         console.warn('⚠️  Medical MCP Server connection failed:', error);
         console.warn('   Some tools will be unavailable for dynamic selection.');
+        console.warn('⚠️  Aidbox MCP Server connection failed:', error);
+        console.warn('   Aidbox FHIR features will be unavailable.');
       }
     } else {
       console.warn('⚠️  Medical MCP Server URL not configured.');

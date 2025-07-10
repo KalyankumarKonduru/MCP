@@ -1,5 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { MedicalServerConnection, MedicalDocumentOperations, createMedicalOperations } from './medicalServerConnection';
+import { AidboxServerConnection, AidboxFHIROperations, createAidboxOperations } from './aidboxServerConnection';
+
 
 export interface MCPClientConfig {
   provider: 'anthropic' | 'ozwell';
@@ -17,6 +19,11 @@ export class MCPClientManager {
   private medicalConnection?: MedicalServerConnection;
   private medicalOperations?: MedicalDocumentOperations;
   private availableTools: any[] = [];
+
+  // Aidbox MCP connection
+  private aidboxConnection?: AidboxServerConnection;
+  private aidboxOperations?: AidboxFHIROperations;
+  private aidboxTools: any[] = [];
 
   private constructor() {}
 
@@ -77,6 +84,34 @@ export class MCPClientManager {
       console.error('   2. Check the MCP server URL in settings.json is correct');
       console.error('   3. Verify the MCP server is accessible at the configured URL');
       console.error('   4. Check that MongoDB is running and configured');
+      throw error;
+    }
+  }
+  public async connectToAidboxServer(): Promise<void> {
+    try {
+      const settings = (global as any).Meteor?.settings?.private;
+      const aidboxServerUrl = settings?.AIDBOX_MCP_SERVER_URL || 
+                             process.env.AIDBOX_MCP_SERVER_URL || 
+                             'http://localhost:3002';
+      
+      console.log(`🏥 Connecting to Aidbox MCP Server at: ${aidboxServerUrl}`);
+      
+      this.aidboxConnection = new AidboxServerConnection(aidboxServerUrl);
+      await this.aidboxConnection.connect();
+      this.aidboxOperations = createAidboxOperations(this.aidboxConnection);
+      
+      // Get Aidbox tools
+      const toolsResult = await this.aidboxConnection.listTools();
+      this.aidboxTools = toolsResult.tools || [];
+      
+      console.log(`✅ Connected to Aidbox with ${this.aidboxTools.length} tools available`);
+      
+      // Merge with existing tools
+      this.availableTools = [...this.availableTools, ...this.aidboxTools];
+      
+    } catch (error) {
+      console.error('❌ Aidbox MCP Server connection failed:', error);
+      console.error('   Aidbox FHIR features will be disabled.');
       throw error;
     }
   }
@@ -147,6 +182,19 @@ export class MCPClientManager {
 
   // Call a specific MCP tool
   public async callMCPTool(toolName: string, args: any): Promise<any> {
+        // In callMCPTool method, add routing for Aidbox tools
+    const aidboxToolNames = ['searchPatients', 'getPatientDetails', 'createPatient', 
+      'updatePatient', 'getPatientObservations', 'createObservation',
+      'getPatientMedications', 'createMedicationRequest', 
+      'getPatientConditions', 'createCondition',
+      'getPatientEncounters', 'createEncounter'];
+
+    if (aidboxToolNames.includes(toolName)) {
+    if (!this.aidboxConnection) {
+    throw new Error('Aidbox MCP server not connected');
+    }
+    return await this.aidboxConnection.callTool(toolName, args);
+    }
     if (!this.medicalConnection) {
       throw new Error('Medical MCP server not connected');
     }
