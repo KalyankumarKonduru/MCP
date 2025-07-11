@@ -75,7 +75,7 @@ Meteor.methods({
           context.conversationContext = contextData;
         }
         
-        // Let Claude intelligently decide what tools to use
+        // Let Claude intelligently decide what tools to use (includes Epic tools)
         const response = await mcpManager.processQueryWithIntelligentToolSelection(query, context);
         
         // Update context after processing
@@ -90,6 +90,10 @@ Meteor.methods({
         // Provide helpful error messages based on the error type
         if (error.message.includes('not connected')) {
           return 'I\'m having trouble connecting to the medical data systems. Please ensure the MCP servers are running and try again.';
+        } else if (error.message.includes('Epic MCP Server')) {
+          return 'I\'m having trouble connecting to the Epic EHR system. Please ensure the Epic MCP server is running and properly configured.';
+        } else if (error.message.includes('Aidbox')) {
+          return 'I\'m having trouble connecting to the Aidbox FHIR system. Please ensure the Aidbox MCP server is running and properly configured.';
         } else if (error.message.includes('API')) {
           return 'I encountered an API error while processing your request. Please try again in a moment.';
         } else {
@@ -174,7 +178,52 @@ Meteor.methods({
     return [];
   },
 
-  // Medical document methods
+  // Server health check method - includes Epic
+  async 'mcp.healthCheck'() {
+    if (this.isSimulation) {
+      return {
+        status: 'healthy',
+        message: 'All systems operational (simulation mode)',
+        servers: {
+          epic: 'simulated',
+          aidbox: 'simulated',
+          medical: 'simulated'
+        }
+      };
+    }
+
+    const mcpManager = MCPClientManager.getInstance();
+    
+    if (!mcpManager.isReady()) {
+      return {
+        status: 'error',
+        message: 'MCP Client not ready',
+        servers: {}
+      };
+    }
+
+    try {
+      const health = await mcpManager.healthCheck();
+      return {
+        status: 'healthy',
+        message: 'Health check completed',
+        servers: {
+          epic: health.epic ? 'healthy' : 'unavailable',
+          aidbox: health.aidbox ? 'healthy' : 'unavailable'
+        },
+        timestamp: new Date()
+      };
+    } catch (error) {
+      return {
+        status: 'error',
+        message: `Health check failed: ${error.message}`,
+        servers: {},
+        timestamp: new Date()
+      };
+    }
+  },
+
+  // Medical document methods (existing)
   async 'medical.uploadDocument'(fileData: {
     filename: string;
     content: string;
@@ -280,6 +329,10 @@ Meteor.methods({
   }
 });
 
+// ================================
+// HELPER FUNCTIONS
+// ================================
+
 // Helper function to extract and update context
 async function extractAndUpdateContext(
   query: string, 
@@ -305,7 +358,7 @@ async function extractAndUpdateContext(
       });
     }
     
-    // Extract data sources mentioned
+    // Extract data sources mentioned in response
     const dataSources = extractDataSources(response);
     if (dataSources.length > 0) {
       await SessionsCollection.updateAsync(sessionId, {
@@ -344,6 +397,7 @@ function extractMedicalTermsFromResponse(response: string): string[] {
 function extractDataSources(response: string): string[] {
   const sources = new Set<string>();
   
+  // Detect data sources mentioned in response
   if (response.toLowerCase().includes('aidbox') || response.toLowerCase().includes('fhir')) {
     sources.add('Aidbox FHIR');
   }
@@ -358,3 +412,22 @@ function extractDataSources(response: string): string[] {
   
   return Array.from(sources);
 }
+
+// Utility function to sanitize patient names (used by intelligent tool selection)
+function sanitizePatientName(name: string): string {
+  return name
+    .trim()
+    .replace(/[^a-zA-Z\s]/g, '') // Remove special characters
+    .replace(/\s+/g, ' ') // Normalize whitespace
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+}
+
+// Export utility functions for testing and reuse
+export {
+  extractAndUpdateContext,
+  extractMedicalTermsFromResponse,
+  extractDataSources,
+  sanitizePatientName
+};

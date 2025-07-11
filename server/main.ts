@@ -101,6 +101,24 @@ Meteor.startup(async () => {
     } else {
       console.warn('⚠️  Aidbox MCP Server URL not configured.');
     }
+
+    // Connect to Epic MCP server for Epic EHR tools
+    const epicServerUrl = settings?.EPIC_MCP_SERVER_URL || 
+                         process.env.EPIC_MCP_SERVER_URL || 
+                         'http://localhost:3003';
+    
+    if (epicServerUrl && epicServerUrl !== 'DISABLED') {
+      try {
+        console.log(`🏥 Connecting to Epic MCP Server for intelligent EHR tool discovery...`);
+        await mcpManager.connectToEpicServer();
+        console.log('✅ Epic EHR tools discovered and ready for intelligent selection');
+      } catch (error) {
+        console.warn('⚠️  Epic MCP Server connection failed:', error);
+        console.warn('   Epic EHR features will be unavailable for intelligent selection.');
+      }
+    } else {
+      console.warn('⚠️  Epic MCP Server URL not configured.');
+    }
     
     // Log final status
     const availableTools = mcpManager.getAvailableTools();
@@ -108,6 +126,15 @@ Meteor.startup(async () => {
     console.log(`   📊 Total tools available: ${availableTools.length}`);
     console.log(`   🧠 AI Provider: ${provider.toUpperCase()}`);
     console.log(`   🔧 Tool selection method: ${provider === 'anthropic' ? 'Native Claude tool calling' : 'Intelligent prompting'}`);
+    
+    // Log available tool categories
+    if (availableTools.length > 0) {
+      const toolCategories = categorizeTools(availableTools);
+      console.log('\n🔧 Available Tool Categories:');
+      Object.entries(toolCategories).forEach(([category, count]) => {
+        console.log(`   ${getCategoryEmoji(category)} ${category}: ${count} tools`);
+      });
+    }
     
     if (availableTools.length > 0) {
       console.log('\n🏆 SUCCESS: Claude will now intelligently select tools based on user queries!');
@@ -120,10 +147,11 @@ Meteor.startup(async () => {
     }
     
     console.log('\n💡 Example queries that will work with intelligent tool selection:');
-    console.log('   • "Get me details about all Hank Preston available from Aidbox"');
-    console.log('   • "Search for diabetes documents and show patient medications"'); 
-    console.log('   • "Upload this lab report and find similar cases"');
-    console.log('   • "What conditions does patient erXuFYUfucBZaryVksYEcMg3 have?"');
+    console.log('   📋 Aidbox FHIR: "Get me details about all Hank Preston available from Aidbox"');
+    console.log('   🏥 Epic EHR: "Search for patient Camila Lopez in Epic"');
+    console.log('   🏥 Epic EHR: "Get lab results for patient erXuFYUfucBZaryVksYEcMg3"');
+    console.log('   📄 Documents: "Upload this lab report and find similar cases"');
+    console.log('   🔗 Multi-tool: "Search Epic for diabetes patients and get their medications"');
     
   } catch (error) {
     console.error('❌ Failed to initialize intelligent tool selection:', error);
@@ -131,6 +159,52 @@ Meteor.startup(async () => {
     console.warn('   Basic LLM responses will work, but no tool calling');
   }
 });
+
+// Helper function to categorize tools for better logging
+function categorizeTools(tools: any[]): Record<string, number> {
+  const categories: Record<string, number> = {};
+  
+  tools.forEach(tool => {
+    let category = 'Other';
+    
+    if (tool.name.toLowerCase().includes('patient') || 
+        tool.name.toLowerCase().includes('observation') ||
+        tool.name.toLowerCase().includes('medication') ||
+        tool.name.toLowerCase().includes('condition') ||
+        tool.name.toLowerCase().includes('encounter')) {
+      if (tool.description?.toLowerCase().includes('epic') || 
+          tool.name.toLowerCase().includes('epic')) {
+        category = 'Epic EHR';
+      } else {
+        category = 'Aidbox FHIR';
+      }
+    } else if (tool.name.toLowerCase().includes('document') ||
+               tool.name.toLowerCase().includes('upload') ||
+               tool.name.toLowerCase().includes('extract')) {
+      category = 'Medical Documents';
+    } else if (tool.name.toLowerCase().includes('search') ||
+               tool.name.toLowerCase().includes('semantic')) {
+      category = 'Search & Analysis';
+    }
+    
+    categories[category] = (categories[category] || 0) + 1;
+  });
+  
+  return categories;
+}
+
+// Helper function to get emoji for tool categories
+function getCategoryEmoji(category: string): string {
+  const emojiMap: Record<string, string> = {
+    'Epic EHR': '🏥',
+    'Aidbox FHIR': '📋',
+    'Medical Documents': '📄',
+    'Search & Analysis': '🔍',
+    'Other': '🔧'
+  };
+  
+  return emojiMap[category] || '🔧';
+}
 
 // Graceful shutdown
 process.on('SIGINT', () => {

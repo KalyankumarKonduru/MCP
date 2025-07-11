@@ -2,6 +2,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { MedicalServerConnection, MedicalDocumentOperations, createMedicalOperations } from './medicalServerConnection';
 import { AidboxServerConnection, AidboxFHIROperations, createAidboxOperations } from './aidboxServerConnection';
+import { EpicServerConnection, EpicFHIROperations, createEpicOperations } from './epicServerConnection';
 
 export interface MCPClientConfig {
   provider: 'anthropic' | 'ozwell';
@@ -24,6 +25,11 @@ export class MCPClientManager {
   private aidboxConnection?: AidboxServerConnection;
   private aidboxOperations?: AidboxFHIROperations;
   private aidboxTools: any[] = [];
+
+  // Epic MCP connection
+  private epicConnection?: EpicServerConnection;
+  private epicOperations?: EpicFHIROperations;
+  private epicTools: any[] = [];
 
   private constructor() {}
 
@@ -113,6 +119,37 @@ export class MCPClientManager {
     }
   }
 
+  public async connectToEpicServer(): Promise<void> {
+    try {
+      const settings = (global as any).Meteor?.settings?.private;
+      const epicServerUrl = settings?.EPIC_MCP_SERVER_URL || 
+                           process.env.EPIC_MCP_SERVER_URL || 
+                           'http://localhost:3003';
+      
+      console.log(`🏥 Connecting to Epic MCP Server at: ${epicServerUrl}`);
+      
+      this.epicConnection = new EpicServerConnection(epicServerUrl);
+      await this.epicConnection.connect();
+      this.epicOperations = createEpicOperations(this.epicConnection);
+      
+      // Get Epic tools
+      const toolsResult = await this.epicConnection.listTools();
+      this.epicTools = toolsResult.tools || [];
+      
+      console.log(`✅ Connected to Epic with ${this.epicTools.length} tools available`);
+      console.log(`📋 Epic tool names: ${this.epicTools.map(t => t.name).join(', ')}`);
+      
+      // Merge with existing tools, ensuring unique names
+      this.availableTools = this.mergeToolsUnique(this.availableTools, this.epicTools);
+      
+      this.logAvailableTools();
+      
+    } catch (error) {
+      console.error('❌ Epic MCP Server connection failed:', error);
+      throw error;
+    }
+  }
+
   // Merge tools ensuring unique names
   private mergeToolsUnique(existingTools: any[], newTools: any[]): any[] {
     console.log(`🔧 Merging tools: ${existingTools.length} existing + ${newTools.length} new`);
@@ -142,6 +179,16 @@ export class MCPClientManager {
       t.name.includes('Encounter') || t.name.includes('searchPatients')
     );
     
+    const epicTools = this.availableTools.filter(t => 
+      t.description?.toLowerCase().includes('epic') || 
+      (t.name.includes('Patient') && !aidboxTools.includes(t)) ||
+      t.name.includes('getPatientDetails') ||
+      t.name.includes('getPatientObservations') ||
+      t.name.includes('getPatientMedications') ||
+      t.name.includes('getPatientConditions') ||
+      t.name.includes('getPatientEncounters')
+    );
+    
     const documentTools = this.availableTools.filter(t => 
       t.name.includes('Document') || t.name.includes('upload') || 
       (t.name.includes('search') && !t.name.includes('Patient'))
@@ -150,6 +197,11 @@ export class MCPClientManager {
     if (aidboxTools.length > 0) {
       console.log('🏥 Aidbox FHIR Tools:');
       aidboxTools.forEach(tool => console.log(`   • ${tool.name} - ${tool.description?.substring(0, 60)}...`));
+    }
+    
+    if (epicTools.length > 0) {
+      console.log('🏥 Epic EHR Tools:');
+      epicTools.forEach(tool => console.log(`   • ${tool.name} - ${tool.description?.substring(0, 60)}...`));
     }
     
     if (documentTools.length > 0) {
@@ -204,12 +256,26 @@ export class MCPClientManager {
     if (dataSource.toLowerCase().includes('aidbox') || dataSource.toLowerCase().includes('fhir')) {
       // User wants Aidbox - return only FHIR tools
       return tools.filter(tool => 
-        tool.name.includes('Patient') || 
-        tool.name.includes('Observation') || 
-        tool.name.includes('Medication') || 
-        tool.name.includes('Condition') || 
-        tool.name.includes('Encounter') ||
-        tool.name === 'searchPatients'
+        (tool.name.includes('Patient') || 
+         tool.name.includes('Observation') || 
+         tool.name.includes('Medication') || 
+         tool.name.includes('Condition') || 
+         tool.name.includes('Encounter') ||
+         tool.name === 'searchPatients') &&
+        !tool.description?.toLowerCase().includes('epic')
+      );
+    }
+    
+    if (dataSource.toLowerCase().includes('epic') || dataSource.toLowerCase().includes('ehr')) {
+      // User wants Epic - return only Epic tools
+      return tools.filter(tool => 
+        tool.description?.toLowerCase().includes('epic') ||
+        tool.name.includes('getPatientDetails') ||
+        tool.name.includes('getPatientObservations') ||
+        tool.name.includes('getPatientMedications') ||
+        tool.name.includes('getPatientConditions') ||
+        tool.name.includes('getPatientEncounters') ||
+        (tool.name === 'searchPatients' && tool.description?.toLowerCase().includes('epic'))
       );
     }
     
@@ -222,6 +288,13 @@ export class MCPClientManager {
     const lowerQuery = query.toLowerCase();
     
     // Check for explicit data source mentions
+    if (lowerQuery.includes('epic') || lowerQuery.includes('ehr')) {
+      return {
+        dataSource: 'Epic EHR',
+        intent: 'Search Epic EHR patient data'
+      };
+    }
+    
     if (lowerQuery.includes('mongodb') || lowerQuery.includes('atlas')) {
       return {
         dataSource: 'MongoDB Atlas',
@@ -244,14 +317,13 @@ export class MCPClientManager {
       };
     }
     
-    // Check for specific medical data patterns that suggest documents vs FHIR
-    if (lowerQuery.includes('diagnosis in') || lowerQuery.includes('records in') || lowerQuery.includes('cases in')) {
-      if (lowerQuery.includes('mongodb') || lowerQuery.includes('atlas')) {
-        return {
-          dataSource: 'MongoDB Atlas',
-          intent: 'Search diagnosis information in uploaded documents'
-        };
-      }
+    // Check for patient search patterns
+    if (lowerQuery.includes('search for patient') || lowerQuery.includes('find patient')) {
+      // Default to Epic for patient searches unless specified
+      return {
+        dataSource: 'Epic EHR',
+        intent: 'Search for patient information'
+      };
     }
     
     return {};
@@ -311,6 +383,27 @@ export class MCPClientManager {
 
   // Route tool calls to appropriate MCP server
   public async callMCPTool(toolName: string, args: any): Promise<any> {
+    // Epic tools
+    const epicToolNames = [
+      'epicSearchPatients', 
+      'epicGetPatientDetails',
+      'epicGetPatientObservations', 
+      'epicGetPatientMedications', 
+      'epicGetPatientConditions', 
+      'epicGetPatientEncounters'
+    ];
+
+    // Check if this is an Epic tool call
+    if (epicToolNames.includes(toolName) && this.epicConnection) {
+      // Try Epic first if available
+      try {
+        return await this.epicConnection.callTool(toolName, args);
+      } catch (error) {
+        console.warn(`⚠️ Epic tool ${toolName} failed, falling back to Aidbox if available:`, error);
+        // Fall through to Aidbox if Epic fails
+      }
+    }
+
     // Aidbox tools
     const aidboxToolNames = [
       'searchPatients', 'getPatientDetails', 'createPatient', 'updatePatient',
@@ -346,6 +439,64 @@ export class MCPClientManager {
       console.error(`❌ Error calling MCP tool ${toolName}:`, error);
       throw error;
     }
+  }
+
+  // Convenience method for Epic tool calls
+  public async callEpicTool(toolName: string, args: any): Promise<any> {
+    if (!this.epicConnection) {
+      throw new Error('Epic MCP Server not connected');
+    }
+
+    try {
+      console.log(`🏥 Calling Epic tool: ${toolName}`, args);
+      const result = await this.epicConnection.callTool(toolName, args);
+      console.log(`✅ Epic tool ${toolName} completed successfully`);
+      return result;
+    } catch (error) {
+      console.error(`❌ Epic tool ${toolName} failed:`, error);
+      throw error;
+    }
+  }
+
+  // Health check for all servers
+  public async healthCheck(): Promise<{ epic: boolean; aidbox: boolean; medical: boolean }> {
+    const health = {
+      epic: false,
+      aidbox: false,
+      medical: false
+    };
+
+    // Check Epic server
+    if (this.epicConnection) {
+      try {
+        const epicHealth = await fetch('http://localhost:3003/health');
+        health.epic = epicHealth.ok;
+      } catch (error) {
+        console.warn('Epic health check failed:', error);
+      }
+    }
+
+    // Check Aidbox server
+    if (this.aidboxConnection) {
+      try {
+        const aidboxHealth = await fetch('http://localhost:3002/health');
+        health.aidbox = aidboxHealth.ok;
+      } catch (error) {
+        console.warn('Aidbox health check failed:', error);
+      }
+    }
+
+    // Check Medical server
+    if (this.medicalConnection) {
+      try {
+        const medicalHealth = await fetch('http://localhost:3001/health');
+        health.medical = medicalHealth.ok;
+      } catch (error) {
+        console.warn('Medical health check failed:', error);
+      }
+    }
+
+    return health;
   }
 
   // Main intelligent query processing method
@@ -429,22 +580,24 @@ export class MCPClientManager {
 
     const systemPrompt = `You are a medical AI assistant with access to multiple healthcare data systems:
 
-🏥 **Aidbox FHIR Tools** - For patient data, observations, medications, conditions, encounters (FHIR format)
+🏥 **Epic EHR Tools** - For Epic EHR patient data, observations, medications, conditions, encounters
+🏥 **Aidbox FHIR Tools** - For FHIR-compliant patient data, observations, medications, conditions, encounters  
 📄 **Medical Document Tools** - For document upload, search, and medical entity extraction (MongoDB Atlas)
 🔍 **Semantic Search** - For finding similar cases and medical insights (MongoDB Atlas)
 
 **CRITICAL: Pay attention to which data source the user mentions:**
 
+- If user mentions "Epic" or "EHR" → Use Epic EHR tools
 - If user mentions "Aidbox" or "FHIR" → Use Aidbox FHIR tools
 - If user mentions "MongoDB", "Atlas", "documents", "uploaded files" → Use document search tools
-- If user mentions "diagnosis in MongoDB" → Search documents, NOT Aidbox
-- If no specific source mentioned → Choose based on context (structured data = Aidbox, documents = MongoDB)
+- If user mentions "diagnosis in MongoDB" → Search documents, NOT Epic/Aidbox
+- If no specific source mentioned → Choose based on context (Epic for patient searches, Aidbox for FHIR, documents for uploads)
 
 **Available Context:**${contextInfo}
 
 **Instructions:**
-1. **LISTEN TO USER'S DATA SOURCE PREFERENCE** - If they say MongoDB/Atlas, use document tools
-2. For Aidbox queries, use patient search first to get IDs, then specific data tools
+1. **LISTEN TO USER'S DATA SOURCE PREFERENCE** - If they say Epic, use Epic tools; if MongoDB/Atlas, use document tools
+2. For Epic/Aidbox queries, use patient search first to get IDs, then specific data tools
 3. For document queries, use search and upload tools
 4. Provide clear, helpful medical information
 5. Always explain what data sources you're using
@@ -454,7 +607,7 @@ Be intelligent about tool selection AND respect the user's specified data source
     let conversationHistory: any[] = [{ role: 'user', content: query }];
     let finalResponse = '';
     let iterations = 0;
-    const maxIterations = 3; // Reduced to avoid API overload
+    const maxIterations = 7; // Reduced to avoid API overload
     const maxRetries = 3;
 
     while (iterations < maxIterations) {
@@ -653,6 +806,14 @@ Based on this query, determine what tools (if any) you need to use and provide a
     return this.medicalOperations;
   }
 
+  public getEpicOperations(): EpicFHIROperations | undefined {
+    return this.epicOperations;
+  }
+
+  public getAidboxOperations(): AidboxFHIROperations | undefined {
+    return this.aidboxOperations;
+  }
+
   // Provider switching methods
   public async switchProvider(provider: 'anthropic' | 'ozwell'): Promise<void> {
     if (!this.config) {
@@ -696,6 +857,10 @@ Based on this query, determine what tools (if any) you need to use and provide a
     
     if (this.aidboxConnection) {
       this.aidboxConnection.disconnect();
+    }
+    
+    if (this.epicConnection) {
+      this.epicConnection.disconnect();
     }
     
     this.isInitialized = false;
