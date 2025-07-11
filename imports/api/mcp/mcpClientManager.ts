@@ -1,7 +1,7 @@
+// imports/api/mcp/mcpClientManager.ts
 import Anthropic from '@anthropic-ai/sdk';
 import { MedicalServerConnection, MedicalDocumentOperations, createMedicalOperations } from './medicalServerConnection';
 import { AidboxServerConnection, AidboxFHIROperations, createAidboxOperations } from './aidboxServerConnection';
-
 
 export interface MCPClientConfig {
   provider: 'anthropic' | 'ozwell';
@@ -35,16 +35,16 @@ export class MCPClientManager {
   }
 
   public async initialize(config: MCPClientConfig): Promise<void> {
-    console.log('🤖 Initializing MCP Client with Enhanced Query Routing');
+    console.log('🤖 Initializing MCP Client with Intelligent Tool Selection');
     this.config = config;
 
     try {
       if (config.provider === 'anthropic') {
-        console.log('Creating Anthropic client with tool calling support...');
+        console.log('Creating Anthropic client with native tool calling support...');
         this.anthropic = new Anthropic({
           apiKey: config.apiKey,
         });
-        console.log('✅ Anthropic client initialized');
+        console.log('✅ Anthropic client initialized with intelligent tool selection');
       }
 
       this.isInitialized = true;
@@ -73,20 +73,15 @@ export class MCPClientManager {
       const toolsResult = await this.medicalConnection.listTools();
       this.availableTools = toolsResult.tools || [];
       
-      console.log(`✅ Connected with ${this.availableTools.length} tools available`);
-      this.logAvailableTools();
+      console.log(`✅ Connected with ${this.availableTools.length} medical tools available`);
+      console.log(`📋 Medical tool names: ${this.availableTools.map(t => t.name).join(', ')}`);
       
     } catch (error) {
       console.error('❌ Medical MCP Server HTTP connection failed:', error);
-      console.error('   Epic FHIR and document processing features will be disabled.');
-      console.error('   Make sure to:');
-      console.error('   1. Start the MCP server in HTTP mode: npm run start:http');
-      console.error('   2. Check the MCP server URL in settings.json is correct');
-      console.error('   3. Verify the MCP server is accessible at the configured URL');
-      console.error('   4. Check that MongoDB is running and configured');
       throw error;
     }
   }
+
   public async connectToAidboxServer(): Promise<void> {
     try {
       const settings = (global as any).Meteor?.settings?.private;
@@ -105,21 +100,43 @@ export class MCPClientManager {
       this.aidboxTools = toolsResult.tools || [];
       
       console.log(`✅ Connected to Aidbox with ${this.aidboxTools.length} tools available`);
+      console.log(`📋 Aidbox tool names: ${this.aidboxTools.map(t => t.name).join(', ')}`);
       
-      // Merge with existing tools
-      this.availableTools = [...this.availableTools, ...this.aidboxTools];
+      // Merge with existing tools, ensuring unique names
+      this.availableTools = this.mergeToolsUnique(this.availableTools, this.aidboxTools);
+      
+      this.logAvailableTools();
       
     } catch (error) {
       console.error('❌ Aidbox MCP Server connection failed:', error);
-      console.error('   Aidbox FHIR features will be disabled.');
       throw error;
     }
   }
 
-  private logAvailableTools(): void {
-    console.log('\n🔧 Available Tools by Category:');
+  // Merge tools ensuring unique names
+  private mergeToolsUnique(existingTools: any[], newTools: any[]): any[] {
+    console.log(`🔧 Merging tools: ${existingTools.length} existing + ${newTools.length} new`);
     
-    const epicTools = this.availableTools.filter(t => 
+    const toolNameSet = new Set(existingTools.map(tool => tool.name));
+    const uniqueNewTools = newTools.filter(tool => {
+      if (toolNameSet.has(tool.name)) {
+        console.warn(`⚠️ Duplicate tool name found: ${tool.name} - skipping duplicate`);
+        return false;
+      }
+      toolNameSet.add(tool.name);
+      return true;
+    });
+    
+    const mergedTools = [...existingTools, ...uniqueNewTools];
+    console.log(`🔧 Merged tools: ${existingTools.length} existing + ${uniqueNewTools.length} new = ${mergedTools.length} total`);
+    
+    return mergedTools;
+  }
+
+  private logAvailableTools(): void {
+    console.log('\n🔧 Available Tools for Intelligent Selection:');
+    
+    const aidboxTools = this.availableTools.filter(t => 
       t.name.includes('Patient') || t.name.includes('Observation') || 
       t.name.includes('Medication') || t.name.includes('Condition') || 
       t.name.includes('Encounter') || t.name.includes('searchPatients')
@@ -130,20 +147,9 @@ export class MCPClientManager {
       (t.name.includes('search') && !t.name.includes('Patient'))
     );
     
-    const analysisTools = this.availableTools.filter(t => 
-      t.name.includes('Medical') || t.name.includes('Entity') || 
-      t.name.includes('Insight') || t.name.includes('Similar') || 
-      t.name.includes('analyze')
-    );
-    
-    const semanticTools = this.availableTools.filter(t => 
-      t.name.includes('Embedding') || t.name.includes('semantic') || 
-      t.name.includes('chunk')
-    );
-
-    if (epicTools.length > 0) {
-      console.log('🏥 Epic FHIR Tools:');
-      epicTools.forEach(tool => console.log(`   • ${tool.name} - ${tool.description?.substring(0, 60)}...`));
+    if (aidboxTools.length > 0) {
+      console.log('🏥 Aidbox FHIR Tools:');
+      aidboxTools.forEach(tool => console.log(`   • ${tool.name} - ${tool.description?.substring(0, 60)}...`));
     }
     
     if (documentTools.length > 0) {
@@ -151,50 +157,177 @@ export class MCPClientManager {
       documentTools.forEach(tool => console.log(`   • ${tool.name} - ${tool.description?.substring(0, 60)}...`));
     }
     
-    if (analysisTools.length > 0) {
-      console.log('🧬 Analysis Tools:');
-      analysisTools.forEach(tool => console.log(`   • ${tool.name} - ${tool.description?.substring(0, 60)}...`));
+    console.log(`\n🧠 Claude will intelligently select from ${this.availableTools.length} total tools based on user queries`);
+    
+    // Debug: Check for duplicates
+    this.debugToolDuplicates();
+  }
+
+  // Debug method to identify duplicate tools
+  private debugToolDuplicates(): void {
+    const toolNames = this.availableTools.map(t => t.name);
+    const nameCount = new Map<string, number>();
+    
+    toolNames.forEach(name => {
+      nameCount.set(name, (nameCount.get(name) || 0) + 1);
+    });
+    
+    const duplicates = Array.from(nameCount.entries())
+      .filter(([name, count]) => count > 1);
+    
+    if (duplicates.length > 0) {
+      console.error('❌ DUPLICATE TOOL NAMES FOUND:');
+      duplicates.forEach(([name, count]) => {
+        console.error(`  • ${name}: appears ${count} times`);
+      });
+    } else {
+      console.log('✅ All tool names are unique');
+    }
+  }
+
+  // Filter tools based on user's specified data source
+  private filterToolsByDataSource(tools: any[], dataSource: string): any[] {
+    if (dataSource.toLowerCase().includes('mongodb') || dataSource.toLowerCase().includes('atlas')) {
+      // User wants MongoDB/Atlas - return only document tools
+      return tools.filter(tool => 
+        tool.name.includes('Document') || 
+        tool.name.includes('search') || 
+        tool.name.includes('upload') || 
+        tool.name.includes('extract') || 
+        tool.name.includes('Medical') ||
+        tool.name.includes('Similar') ||
+        tool.name.includes('Insight') ||
+        (tool.name.includes('search') && !tool.name.includes('Patient'))
+      );
     }
     
-    if (semanticTools.length > 0) {
-      console.log('🔍 Semantic Tools:');
-      semanticTools.forEach(tool => console.log(`   • ${tool.name} - ${tool.description?.substring(0, 60)}...`));
+    if (dataSource.toLowerCase().includes('aidbox') || dataSource.toLowerCase().includes('fhir')) {
+      // User wants Aidbox - return only FHIR tools
+      return tools.filter(tool => 
+        tool.name.includes('Patient') || 
+        tool.name.includes('Observation') || 
+        tool.name.includes('Medication') || 
+        tool.name.includes('Condition') || 
+        tool.name.includes('Encounter') ||
+        tool.name === 'searchPatients'
+      );
     }
+    
+    // No specific preference, return all tools
+    return tools;
   }
 
-  // Get available tools
-  public getAvailableTools(): any[] {
-    return this.availableTools;
-  }
-
-  // Check if a specific tool is available
-  public isToolAvailable(toolName: string): boolean {
-    return this.availableTools.some(tool => tool.name === toolName);
-  }
-
-  // Get medical document operations
-  public getMedicalOperations(): MedicalDocumentOperations {
-    if (!this.medicalOperations) {
-      throw new Error('Medical MCP server not connected');
+  // Analyze query to understand user's intent about data sources
+  private analyzeQueryIntent(query: string): { dataSource?: string; intent?: string } {
+    const lowerQuery = query.toLowerCase();
+    
+    // Check for explicit data source mentions
+    if (lowerQuery.includes('mongodb') || lowerQuery.includes('atlas')) {
+      return {
+        dataSource: 'MongoDB Atlas',
+        intent: 'Search uploaded documents and medical records'
+      };
     }
-    return this.medicalOperations;
+    
+    if (lowerQuery.includes('aidbox') || lowerQuery.includes('fhir')) {
+      return {
+        dataSource: 'Aidbox FHIR',
+        intent: 'Search structured patient data'
+      };
+    }
+    
+    // Check for document-related terms
+    if (lowerQuery.includes('document') || lowerQuery.includes('upload') || lowerQuery.includes('file')) {
+      return {
+        dataSource: 'MongoDB Atlas (documents)',
+        intent: 'Work with uploaded medical documents'
+      };
+    }
+    
+    // Check for specific medical data patterns that suggest documents vs FHIR
+    if (lowerQuery.includes('diagnosis in') || lowerQuery.includes('records in') || lowerQuery.includes('cases in')) {
+      if (lowerQuery.includes('mongodb') || lowerQuery.includes('atlas')) {
+        return {
+          dataSource: 'MongoDB Atlas',
+          intent: 'Search diagnosis information in uploaded documents'
+        };
+      }
+    }
+    
+    return {};
   }
 
-  // Call a specific MCP tool
+  // Convert tools to Anthropic format with strict deduplication
+  private getAnthropicTools(): any[] {
+    // Use Map to ensure uniqueness by tool name
+    const uniqueTools = new Map<string, any>();
+    
+    this.availableTools.forEach(tool => {
+      if (!uniqueTools.has(tool.name)) {
+        uniqueTools.set(tool.name, {
+          name: tool.name,
+          description: tool.description,
+          input_schema: {
+            type: "object",
+            properties: tool.inputSchema?.properties || {},
+            required: tool.inputSchema?.required || []
+          }
+        });
+      } else {
+        console.warn(`⚠️ Skipping duplicate tool in Anthropic format: ${tool.name}`);
+      }
+    });
+    
+    const toolsArray = Array.from(uniqueTools.values());
+    console.log(`🔧 Prepared ${toolsArray.length} unique tools for Anthropic (from ${this.availableTools.length} total)`);
+    
+    return toolsArray;
+  }
+
+  // Validate tools before sending to Anthropic (additional safety check)
+  private validateToolsForAnthropic(): any[] {
+    const tools = this.getAnthropicTools();
+    
+    // Final check for duplicates
+    const nameSet = new Set<string>();
+    const validTools: any[] = [];
+    
+    tools.forEach(tool => {
+      if (!nameSet.has(tool.name)) {
+        nameSet.add(tool.name);
+        validTools.push(tool);
+      } else {
+        console.error(`❌ CRITICAL: Duplicate tool found in final validation: ${tool.name}`);
+      }
+    });
+    
+    if (validTools.length !== tools.length) {
+      console.warn(`🧹 Removed ${tools.length - validTools.length} duplicate tools in final validation`);
+    }
+    
+    console.log(`✅ Final validation: ${validTools.length} unique tools ready for Anthropic`);
+    return validTools;
+  }
+
+  // Route tool calls to appropriate MCP server
   public async callMCPTool(toolName: string, args: any): Promise<any> {
-        // In callMCPTool method, add routing for Aidbox tools
-    const aidboxToolNames = ['searchPatients', 'getPatientDetails', 'createPatient', 
-      'updatePatient', 'getPatientObservations', 'createObservation',
+    // Aidbox tools
+    const aidboxToolNames = [
+      'searchPatients', 'getPatientDetails', 'createPatient', 'updatePatient',
+      'getPatientObservations', 'createObservation',
       'getPatientMedications', 'createMedicationRequest', 
       'getPatientConditions', 'createCondition',
-      'getPatientEncounters', 'createEncounter'];
+      'getPatientEncounters', 'createEncounter'
+    ];
 
     if (aidboxToolNames.includes(toolName)) {
-    if (!this.aidboxConnection) {
-    throw new Error('Aidbox MCP server not connected');
+      if (!this.aidboxConnection) {
+        throw new Error('Aidbox MCP server not connected');
+      }
+      return await this.aidboxConnection.callTool(toolName, args);
     }
-    return await this.aidboxConnection.callTool(toolName, args);
-    }
+
+    // Medical document tools
     if (!this.medicalConnection) {
       throw new Error('Medical MCP server not connected');
     }
@@ -215,8 +348,8 @@ export class MCPClientManager {
     }
   }
 
-  // Enhanced query processing with automatic tool calling and context
-  public async processQueryWithMedicalContext(
+  // Main intelligent query processing method
+  public async processQueryWithIntelligentToolSelection(
     query: string,
     context?: { documentId?: string; patientId?: string; sessionId?: string }
   ): Promise<string> {
@@ -224,272 +357,248 @@ export class MCPClientManager {
       throw new Error('MCP Client not initialized');
     }
 
+    console.log(`🧠 Processing query with intelligent tool selection: "${query}"`);
+
     try {
-      let enhancedQuery = query;
-      let medicalContext = '';
-      let toolResults: any[] = [];
-
-      console.log(`🧠 Processing query with medical context: "${query}"`);
-
-      // 1. DETECT AND EXECUTE SEARCH QUERIES AUTOMATICALLY
-      if (this.isDirectSearchQuery(query)) {
-        try {
-          const searchTerms = this.extractSearchTerms(query);
-          console.log(`🔍 Auto-executing search for: "${searchTerms}"`);
-          
-          const searchResult = await this.callMCPTool('searchDocuments', {
-            query: searchTerms,
-            limit: 5,
-            threshold: 0.3,
-            searchType: 'hybrid',
-            filter: context?.patientId ? { patientId: context.patientId } : {}
-          });
-          
-          toolResults.push({
-            tool: 'searchDocuments',
-            query: searchTerms,
-            result: searchResult
-          });
-          
-          // Format results and return immediately for search queries
-          return this.formatSearchResults(searchResult, query, searchTerms);
-          
-        } catch (error) {
-          console.error('Auto-search failed:', error);
-          return `I tried to search for "${query}" but encountered an error. Please try rephrasing your search or ensure medical documents have been uploaded to the system.`;
-        }
-      }
-
-      // 2. GATHER MEDICAL CONTEXT for general queries
-      if (this.medicalOperations && this.isMedicalQuery(query)) {
-        try {
-          console.log(`🏥 Gathering medical context for query`);
-          const searchResult = await this.medicalOperations.searchDocuments(query, {
-            filter: context?.patientId ? { patientId: context.patientId } : {},
-            limit: 3,
-            threshold: 0.4
-          });
-          
-          if (searchResult.success && searchResult.results && searchResult.results.length > 0) {
-            medicalContext = `\n\n**Relevant Medical Information Found:**\n${this.summarizeSearchResults(searchResult.results)}`;
-            toolResults.push({
-              tool: 'contextSearch',
-              result: searchResult
-            });
-          }
-        } catch (error) {
-          console.error('Error fetching medical context:', error);
-        }
-      }
-
-      // 3. BUILD ENHANCED PROMPT with context and available tools
-      if (toolResults.length > 0 && toolResults[0].tool === 'contextSearch') {
-        enhancedQuery = `User Query: ${query}\n\nI found some relevant medical information that might help answer this question:\n${medicalContext}\n\nPlease provide a helpful answer based on this medical context and your knowledge.`;
-      } else {
-        enhancedQuery = query + medicalContext;
-      }
-
-      // Add available tools context for the LLM
-      const toolsContext = this.buildToolsContext(query);
-      if (toolsContext) {
-        enhancedQuery += `\n\nNote: I have access to medical document tools if you need me to search for specific information: ${toolsContext}`;
-      }
-
-      // 4. PROCESS WITH LLM
-      console.log(`🤖 Sending to LLM provider: ${this.config.provider}`);
-      
       if (this.config.provider === 'anthropic' && this.anthropic) {
-        return await this.processWithAnthropic(enhancedQuery);
+        return await this.processWithAnthropicIntelligent(query, context);
       } else if (this.config.provider === 'ozwell') {
-        return await this.processWithOzwell(enhancedQuery);
+        return await this.processWithOzwellIntelligent(query, context);
       }
       
       throw new Error('No LLM provider configured');
-    } catch (error) {
-      console.error('Error processing query with medical context:', error);
-      throw error;
-    }
-  }
-
-  // Helper methods for query processing
-  private isDirectSearchQuery(query: string): boolean {
-    const searchPatterns = [
-      /^search\s+for\s+/i,
-      /^find\s+/i,
-      /^look\s+for\s+/i,
-      /^show\s+me\s+/i,
-      /^list\s+/i,
-      /documents?\s+about/i,
-      /records?\s+for/i,
-      /files?\s+for/i
-    ];
-    
-    return searchPatterns.some(pattern => pattern.test(query));
-  }
-
-  private isMedicalQuery(query: string): boolean {
-    const medicalKeywords = [
-      'medical', 'patient', 'diagnosis', 'treatment', 'medication', 'prescription',
-      'doctor', 'hospital', 'clinic', 'health', 'disease', 'condition', 'symptom',
-      'lab', 'test', 'result', 'report', 'chart', 'record'
-    ];
-    
-    const lowerQuery = query.toLowerCase();
-    return medicalKeywords.some(keyword => lowerQuery.includes(keyword));
-  }
-
-  private extractSearchTerms(query: string): string {
-    return query
-      .replace(/^(search\s+for|find|look\s+for|show\s+me|list|documents?\s+about|records?\s+for|files?\s+for)\s*/i, '')
-      .replace(/\b(patient|documents?|records?|files?)\b/gi, '')
-      .trim() || query;
-  }
-
-  private summarizeSearchResults(results: any[]): string {
-    return results.slice(0, 2).map(result => 
-      `- **${result.title}**: ${result.content?.substring(0, 150)}...`
-    ).join('\n');
-  }
-
-  private buildToolsContext(query: string): string {
-    if (this.availableTools.length === 0) {
-      return '';
-    }
-
-    const relevantTools = this.availableTools.filter(tool => {
-      const toolKeywords = tool.name.toLowerCase() + ' ' + tool.description.toLowerCase();
-      const queryLower = query.toLowerCase();
+    } catch (error: any) {
+      console.error('Error processing query with intelligent tool selection:', error);
       
-      return (
-        queryLower.includes('upload') && toolKeywords.includes('upload') ||
-        queryLower.includes('search') && toolKeywords.includes('search') ||
-        queryLower.includes('list') && toolKeywords.includes('list') ||
-        queryLower.includes('extract') && toolKeywords.includes('extract') ||
-        queryLower.includes('analyze') && toolKeywords.includes('analyze') ||
-        queryLower.includes('similar') && toolKeywords.includes('similar') ||
-        queryLower.includes('insight') && toolKeywords.includes('insight')
-      );
-    });
-
-    if (relevantTools.length > 0) {
-      return relevantTools.map(tool => `${tool.name}: ${tool.description}`).join(', ');
+      // Handle specific error types
+      if (error.status === 529 || error.message?.includes('Overloaded')) {
+        return 'I\'m experiencing high demand right now. Please try your query again in a moment. The system should respond normally after a brief wait.';
+      }
+      
+      if (error.message?.includes('not connected')) {
+        return 'I\'m having trouble connecting to the medical data systems. Please ensure the MCP servers are running and try again.';
+      }
+      
+      if (error.message?.includes('API')) {
+        return 'I encountered an API error while processing your request. Please try again in a moment.';
+      }
+      
+      // For development/debugging
+      if (process.env.NODE_ENV === 'development') {
+        return `Error: ${error.message}`;
+      }
+      
+      return 'I encountered an error while processing your request. Please try rephrasing your question or try again in a moment.';
     }
-
-    return '';
   }
 
-  private formatSearchResults(searchResult: any, originalQuery: string, searchTerms: string): string {
-    try {
-      console.log(`🔧 Formatting search results for query: "${originalQuery}"`);
+  // Anthropic native tool calling with iterative support
+  private async processWithAnthropicIntelligent(
+    query: string, 
+    context?: any
+  ): Promise<string> {
+    // Use validated tools to prevent duplicate errors
+    let tools = this.validateToolsForAnthropic();
+    
+    // Analyze query to understand data source intent
+    const queryIntent = this.analyzeQueryIntent(query);
+    
+    // Filter tools based on user's explicit data source preference
+    if (queryIntent.dataSource) {
+      tools = this.filterToolsByDataSource(tools, queryIntent.dataSource);
+      console.log(`🎯 Filtered to ${tools.length} tools based on data source: ${queryIntent.dataSource}`);
+      console.log(`🔧 Available tools after filtering: ${tools.map(t => t.name).join(', ')}`);
+    }
+    
+    // Build context information
+    let contextInfo = '';
+    if (context?.patientId) {
+      contextInfo += `\nCurrent patient context: ${context.patientId}`;
+    }
+    if (context?.sessionId) {
+      contextInfo += `\nSession context available`;
+    }
+    
+    // Add query intent to context
+    if (queryIntent.dataSource) {
+      contextInfo += `\nUser specified data source: ${queryIntent.dataSource}`;
+    }
+    if (queryIntent.intent) {
+      contextInfo += `\nQuery intent: ${queryIntent.intent}`;
+    }
+
+    const systemPrompt = `You are a medical AI assistant with access to multiple healthcare data systems:
+
+🏥 **Aidbox FHIR Tools** - For patient data, observations, medications, conditions, encounters (FHIR format)
+📄 **Medical Document Tools** - For document upload, search, and medical entity extraction (MongoDB Atlas)
+🔍 **Semantic Search** - For finding similar cases and medical insights (MongoDB Atlas)
+
+**CRITICAL: Pay attention to which data source the user mentions:**
+
+- If user mentions "Aidbox" or "FHIR" → Use Aidbox FHIR tools
+- If user mentions "MongoDB", "Atlas", "documents", "uploaded files" → Use document search tools
+- If user mentions "diagnosis in MongoDB" → Search documents, NOT Aidbox
+- If no specific source mentioned → Choose based on context (structured data = Aidbox, documents = MongoDB)
+
+**Available Context:**${contextInfo}
+
+**Instructions:**
+1. **LISTEN TO USER'S DATA SOURCE PREFERENCE** - If they say MongoDB/Atlas, use document tools
+2. For Aidbox queries, use patient search first to get IDs, then specific data tools
+3. For document queries, use search and upload tools
+4. Provide clear, helpful medical information
+5. Always explain what data sources you're using
+
+Be intelligent about tool selection AND respect the user's specified data source.`;
+
+    let conversationHistory: any[] = [{ role: 'user', content: query }];
+    let finalResponse = '';
+    let iterations = 0;
+    const maxIterations = 3; // Reduced to avoid API overload
+    const maxRetries = 3;
+
+    while (iterations < maxIterations) {
+      console.log(`🔄 Iteration ${iterations + 1} - Asking Claude to decide on tools`);
+      console.log(`🔧 Using ${tools.length} validated tools`);
       
-      let resultData;
-      if (searchResult?.content?.[0]?.text) {
+      let retryCount = 0;
+      let response;
+      
+      // Add retry logic for API overload
+      while (retryCount < maxRetries) {
         try {
-          resultData = JSON.parse(searchResult.content[0].text);
-        } catch (parseError) {
-          console.error('Failed to parse search result JSON:', parseError);
-          return `I found some results but couldn't process them properly. Please try a different search.`;
+          response = await this.anthropic!.messages.create({
+            model: 'claude-3-5-sonnet-20241022',
+            max_tokens: 1000, // Reduced to avoid overload
+            system: systemPrompt,
+            messages: conversationHistory,
+            tools: tools,
+            tool_choice: { type: 'auto' }
+          });
+          break; // Success, exit retry loop
+        } catch (error: any) {
+          if (error.status === 529 && retryCount < maxRetries - 1) {
+            retryCount++;
+            const delay = Math.pow(2, retryCount) * 1000; // Exponential backoff
+            console.warn(`⚠️ Anthropic API overloaded, retrying in ${delay}ms (attempt ${retryCount}/${maxRetries})`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+          } else {
+            throw error; // Re-throw if not retryable or max retries reached
+          }
         }
-      } else {
-        resultData = searchResult;
       }
       
-      console.log(`📊 Parsed result data:`, resultData);
+      if (!response) {
+        throw new Error('Failed to get response from Anthropic after retries');
+      }
+
+      let hasToolUse = false;
+      let assistantResponse: any[] = [];
       
-      if (!resultData?.success) {
-        const errorMsg = resultData?.error || 'Unknown error occurred';
-        return `I couldn't search the medical documents: ${errorMsg}. Please try uploading some documents first.`;
+      for (const content of response.content) {
+        assistantResponse.push(content);
+        
+        if (content.type === 'text') {
+          finalResponse += content.text;
+          console.log(`💬 Claude says: ${content.text.substring(0, 100)}...`);
+        } else if (content.type === 'tool_use') {
+          hasToolUse = true;
+          console.log(`🔧 Claude chose tool: ${content.name} with args:`, content.input);
+          
+          try {
+            const toolResult = await this.callMCPTool(content.name, content.input);
+            console.log(`✅ Tool ${content.name} executed successfully`);
+            
+            // Add tool result to conversation
+            conversationHistory.push(
+              { role: 'assistant', content: assistantResponse }
+            );
+            
+            conversationHistory.push({
+              role: 'user',
+              content: [{
+                type: 'tool_result',
+                tool_use_id: content.id,
+                content: this.formatToolResult(toolResult)
+              }]
+            });
+            
+          } catch (error) {
+            console.error(`❌ Tool ${content.name} failed:`, error);
+            
+            conversationHistory.push(
+              { role: 'assistant', content: assistantResponse }
+            );
+            
+            conversationHistory.push({
+              role: 'user',
+              content: [{
+                type: 'tool_result',
+                tool_use_id: content.id,
+                content: `Error executing tool: ${error.message}`,
+                is_error: true
+              }]
+            });
+          }
+          
+          // Clear the current response since we're continuing the conversation
+          finalResponse = '';
+          break; // Process one tool at a time
+        }
+      }
+
+      if (!hasToolUse) {
+        // Claude didn't use any tools, so it's providing a final answer
+        console.log('✅ Claude provided final answer without additional tools');
+        break;
+      }
+
+      iterations++;
+    }
+
+    if (iterations >= maxIterations) {
+      finalResponse += '\n\n*Note: Reached maximum tool iterations. Response may be incomplete.*';
+    }
+
+    return finalResponse || 'I was unable to process your request completely.';
+  }
+
+  // Format tool results for Claude
+  private formatToolResult(result: any): string {
+    try {
+      // Handle different result formats
+      if (result?.content?.[0]?.text) {
+        return result.content[0].text;
       }
       
-      const results = resultData.results || [];
-      console.log(`📈 Found ${results.length} results`);
-      
-      if (results.length === 0) {
-        return `I searched for "${searchTerms}" but didn't find any matching medical documents.\n\n**Suggestions:**\n• Try different search terms (specific conditions, medications, or patient names)\n• Upload more medical documents to expand the database\n• Use broader search terms\n• Check if the documents contain the information you're looking for`;
+      if (typeof result === 'string') {
+        return result;
       }
       
-      let response = `**Found ${results.length} medical document${results.length > 1 ? 's' : ''} for "${searchTerms}":**\n\n`;
-      
-      results.forEach((result: any, index: number) => {
-        response += `**${index + 1}. ${result.title}**\n`;
-        
-        if (result.score !== undefined) {
-          const percentage = Math.round(result.score * 100);
-          response += `📊 **Relevance:** ${percentage}%\n`;
-        }
-        
-        if (result.metadata?.patientId && result.metadata.patientId !== 'Unknown Patient') {
-          response += `👤 **Patient:** ${result.metadata.patientId}\n`;
-        }
-        
-        if (result.metadata?.documentType) {
-          const type = result.metadata.documentType.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase());
-          response += `📋 **Type:** ${type}\n`;
-        }
-        
-        if (result.metadata?.uploadedAt) {
-          const date = new Date(result.metadata.uploadedAt).toLocaleDateString();
-          response += `📅 **Date:** ${date}\n`;
-        }
-        
-        if (result.content) {
-          const preview = result.content.substring(0, 250).replace(/\n+/g, ' ').trim();
-          response += `📄 **Content:** ${preview}${result.content.length > 250 ? '...' : ''}\n`;
-        }
-        
-        if (result.relevantEntities && result.relevantEntities.length > 0) {
-          const entities = result.relevantEntities
-            .slice(0, 5)
-            .map((e: any) => `${e.text} (${e.label.toLowerCase()})`)
-            .join(', ');
-          response += `🏷️ **Key Medical Terms:** ${entities}\n`;
-        }
-        
-        response += '\n---\n\n';
-      });
-      
-      response += `💡 **What you can do next:**\n`;
-      response += `• Ask specific questions about these documents\n`;
-      response += `• Search for specific conditions, medications, or symptoms\n`;
-      response += `• Upload additional medical documents\n`;
-      response += `• Request summaries or analysis of the found documents`;
-      
-      return response;
-      
+      return JSON.stringify(result, null, 2);
     } catch (error) {
-      console.error('Error formatting search results:', error);
-      return `I found some medical documents but had trouble formatting the results. Please try your search again.`;
+      return `Tool result formatting error: ${error.message}`;
     }
   }
 
-  private async processWithAnthropic(query: string): Promise<string> {
-    const systemPrompt = `You are a medical AI assistant with access to MCP (Model Context Protocol) tools for medical document processing and Epic FHIR EHR integration. 
-
-When users ask about medical information, provide clear, helpful responses. If medical context is provided in the query, use it to give specific answers. Always be helpful and provide accurate information while being clear about limitations.
-
-Available MCP Tools:
-${this.availableTools.map(tool => `- ${tool.name}: ${tool.description}`).join('\n')}
-
-Respond in a friendly, professional manner and format your responses for easy reading.`;
-
-    const response = await this.anthropic!.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
-      max_tokens: 1000,
-      system: systemPrompt,
-      messages: [{ role: 'user', content: query }],
-    });
-
-    if (response.content[0].type === 'text') {
-      return response.content[0].text;
-    }
-
-    return 'No response generated';
-  }
-
-  private async processWithOzwell(query: string): Promise<string> {
+  // Ozwell implementation with intelligent prompting
+  private async processWithOzwellIntelligent(
+    query: string, 
+    context?: any
+  ): Promise<string> {
     const endpoint = this.config?.ozwellEndpoint || 'https://ai.bluehive.com/api/v1/completion';
     
-    const systemPrompt = `You are a medical AI assistant with access to MCP tools for medical document processing and Epic FHIR integration. Available tools: ${this.availableTools.map(t => t.name).join(', ')}. Provide clear, helpful responses about medical information.`;
+    const availableToolsDescription = this.availableTools.map(tool => 
+      `${tool.name}: ${tool.description}`
+    ).join('\n');
+    
+    const systemPrompt = `You are a medical AI assistant with access to these tools:
+
+${availableToolsDescription}
+
+The user's query is: "${query}"
+
+Based on this query, determine what tools (if any) you need to use and provide a helpful response. If you need to use tools, explain what you would do, but note that in this mode you cannot actually execute tools.`;
     
     try {
       const response = await fetch(endpoint, {
@@ -499,7 +608,7 @@ Respond in a friendly, professional manner and format your responses for easy re
           'Authorization': `Bearer ${this.config?.apiKey}`,
         },
         body: JSON.stringify({
-          prompt: `${systemPrompt}\n\nUser: ${query}`,
+          prompt: systemPrompt,
           max_tokens: 1000,
           temperature: 0.7,
           stream: false,
@@ -519,6 +628,31 @@ Respond in a friendly, professional manner and format your responses for easy re
     }
   }
 
+  // Backward compatibility methods
+  public async processQueryWithMedicalContext(
+    query: string,
+    context?: { documentId?: string; patientId?: string; sessionId?: string }
+  ): Promise<string> {
+    // Route to intelligent tool selection
+    return this.processQueryWithIntelligentToolSelection(query, context);
+  }
+
+  // Utility methods
+  public getAvailableTools(): any[] {
+    return this.availableTools;
+  }
+
+  public isToolAvailable(toolName: string): boolean {
+    return this.availableTools.some(tool => tool.name === toolName);
+  }
+
+  public getMedicalOperations(): MedicalDocumentOperations {
+    if (!this.medicalOperations) {
+      throw new Error('Medical MCP server not connected');
+    }
+    return this.medicalOperations;
+  }
+
   // Provider switching methods
   public async switchProvider(provider: 'anthropic' | 'ozwell'): Promise<void> {
     if (!this.config) {
@@ -526,7 +660,7 @@ Respond in a friendly, professional manner and format your responses for easy re
     }
 
     this.config.provider = provider;
-    console.log(`🔄 Switched to ${provider.toUpperCase()} provider`);
+    console.log(`🔄 Switched to ${provider.toUpperCase()} provider with intelligent tool selection`);
   }
 
   public getCurrentProvider(): 'anthropic' | 'ozwell' | undefined {
@@ -558,6 +692,10 @@ Respond in a friendly, professional manner and format your responses for easy re
     
     if (this.medicalConnection) {
       this.medicalConnection.disconnect();
+    }
+    
+    if (this.aidboxConnection) {
+      this.aidboxConnection.disconnect();
     }
     
     this.isInitialized = false;
