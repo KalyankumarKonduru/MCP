@@ -428,64 +428,132 @@ private isAnalysisTool(tool: any): boolean {
   }
 
   // Route tool calls to appropriate MCP server
-  public async callMCPTool(toolName: string, args: any): Promise<any> {
-    // Epic tools
-    const epicToolNames = [
-      'epicSearchPatients', 
-      'epicGetPatientDetails',
-      'epicGetPatientObservations', 
-      'epicGetPatientMedications', 
-      'epicGetPatientConditions', 
-      'epicGetPatientEncounters'
-    ];
+// Fix for imports/api/mcp/mcpClientManager.ts
+// Replace the callMCPTool method with proper routing
 
-    // Check if this is an Epic tool call
-    if (epicToolNames.includes(toolName) && this.epicConnection) {
-      // Try Epic first if available
-      try {
-        return await this.epicConnection.callTool(toolName, args);
-      } catch (error) {
-        console.warn(`⚠️ Epic tool ${toolName} failed, falling back to Aidbox if available:`, error);
-        // Fall through to Aidbox if Epic fails
-      }
+public async callMCPTool(toolName: string, args: any): Promise<any> {
+  console.log(`🔧 Routing tool: ${toolName} with args:`, JSON.stringify(args, null, 2));
+  
+  // Epic tools - MUST go to Epic MCP Server (port 3003)
+  const epicToolNames = [
+    'epicSearchPatients', 
+    'epicGetPatientDetails',
+    'epicGetPatientObservations', 
+    'epicGetPatientMedications', 
+    'epicGetPatientConditions', 
+    'epicGetPatientEncounters'
+  ];
+
+  if (epicToolNames.includes(toolName)) {
+    if (!this.epicConnection) {
+      throw new Error('Epic MCP Server not connected - cannot call Epic tools');
     }
-
-    // Aidbox tools
-    const aidboxToolNames = [
-      'searchPatients', 'getPatientDetails', 'createPatient', 'updatePatient',
-      'getPatientObservations', 'createObservation',
-      'getPatientMedications', 'createMedicationRequest', 
-      'getPatientConditions', 'createCondition',
-      'getPatientEncounters', 'createEncounter'
-    ];
-
-    if (aidboxToolNames.includes(toolName)) {
-      if (!this.aidboxConnection) {
-        throw new Error('Aidbox MCP server not connected');
-      }
-      return await this.aidboxConnection.callTool(toolName, args);
-    }
-
-    // Medical document tools
-    if (!this.medicalConnection) {
-      throw new Error('Medical MCP server not connected');
-    }
-
-    if (!this.isToolAvailable(toolName)) {
-      const availableToolNames = this.availableTools.map(t => t.name).join(', ');
-      throw new Error(`Tool '${toolName}' is not available. Available tools: ${availableToolNames}`);
-    }
-
+    
+    console.log(`🏥 Routing ${toolName} to Epic MCP Server (port 3003)`);
     try {
-      console.log(`🔧 Calling MCP tool: ${toolName} with args:`, JSON.stringify(args, null, 2));
-      const result = await this.medicalConnection.callTool(toolName, args);
-      console.log(`✅ Tool ${toolName} completed successfully`);
+      const result = await this.epicConnection.callTool(toolName, args);
+      console.log(`✅ Epic tool ${toolName} completed successfully`);
       return result;
     } catch (error) {
-      console.error(`❌ Error calling MCP tool ${toolName}:`, error);
-      throw error;
+      console.error(`❌ Epic tool ${toolName} failed:`, error);
+      throw new Error(`Epic tool ${toolName} failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
+
+  // Aidbox tools - MUST go to Aidbox MCP Server (port 3002)
+  const aidboxToolNames = [
+    'searchPatients', 'getPatientDetails', 'createPatient', 'updatePatient',
+    'getPatientObservations', 'createObservation',
+    'getPatientMedications', 'createMedicationRequest', 
+    'getPatientConditions', 'createCondition',
+    'getPatientEncounters', 'createEncounter',
+    // Also handle renamed aidbox tools if they exist
+    'aidboxSearchPatients', 'aidboxGetPatientDetails', 'aidboxCreatePatient', 'aidboxUpdatePatient',
+    'aidboxGetPatientObservations', 'aidboxCreateObservation',
+    'aidboxGetPatientMedications', 'aidboxCreateMedicationRequest',
+    'aidboxGetPatientConditions', 'aidboxCreateCondition',
+    'aidboxGetPatientEncounters', 'aidboxCreateEncounter'
+  ];
+
+  if (aidboxToolNames.includes(toolName)) {
+    if (!this.aidboxConnection) {
+      throw new Error('Aidbox MCP Server not connected - cannot call Aidbox tools');
+    }
+    
+    console.log(`🏥 Routing ${toolName} to Aidbox MCP Server (port 3002)`);
+    try {
+      // Handle renamed tools by converting back to original name
+      let actualToolName = toolName;
+      if (toolName.startsWith('aidbox')) {
+        // Convert aidboxSearchPatients → searchPatients
+        actualToolName = toolName.charAt(6).toLowerCase() + toolName.slice(7);
+        console.log(`🔄 Converting renamed tool: ${toolName} → ${actualToolName}`);
+      }
+      
+      const result = await this.aidboxConnection.callTool(actualToolName, args);
+      console.log(`✅ Aidbox tool ${toolName} completed successfully`);
+      return result;
+    } catch (error) {
+      console.error(`❌ Aidbox tool ${toolName} failed:`, error);
+      throw new Error(`Aidbox tool ${toolName} failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  // Medical/Document tools - Go to Medical MCP Server (port 3001)
+  const medicalToolNames = [
+    // Document tools
+    'uploadDocument', 'searchDocuments', 'listDocuments',
+    'generateEmbeddingLocal', 'chunkAndEmbedDocument',
+    
+    // Analysis tools
+    'extractMedicalEntities', 'findSimilarCases', 'analyzePatientHistory',
+    'getMedicalInsights', 'semanticSearchLocal',
+    
+    // Legacy tools
+    'upload_document', 'extract_text', 'extract_medical_entities',
+    'search_by_diagnosis', 'semantic_search', 'get_patient_summary'
+  ];
+
+  if (medicalToolNames.includes(toolName)) {
+    if (!this.medicalConnection) {
+      throw new Error('Medical MCP Server not connected - cannot call medical/document tools');
+    }
+    
+    console.log(`📋 Routing ${toolName} to Medical MCP Server (port 3001)`);
+    try {
+      const result = await this.medicalConnection.callTool(toolName, args);
+      console.log(`✅ Medical tool ${toolName} completed successfully`);
+      return result;
+    } catch (error) {
+      console.error(`❌ Medical tool ${toolName} failed:`, error);
+      throw new Error(`Medical tool ${toolName} failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  // Unknown tool - check if it exists in available tools
+  const availableTool = this.availableTools.find(t => t.name === toolName);
+  if (!availableTool) {
+    const availableToolNames = this.availableTools.map(t => t.name).join(', ');
+    throw new Error(`Tool '${toolName}' is not available. Available tools: ${availableToolNames}`);
+  }
+
+  // If we get here, the tool exists but we don't know which server it belongs to
+  // This shouldn't happen with proper categorization
+  console.warn(`⚠️ Unknown tool routing for: ${toolName}. Defaulting to Medical server.`);
+  
+  if (!this.medicalConnection) {
+    throw new Error('Medical MCP Server not connected');
+  }
+  
+  try {
+    const result = await this.medicalConnection.callTool(toolName, args);
+    console.log(`✅ Tool ${toolName} completed successfully (default routing)`);
+    return result;
+  } catch (error) {
+    console.error(`❌ Tool ${toolName} failed on default routing:`, error);
+    throw new Error(`Tool ${toolName} failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+}
 
   // Convenience method for Epic tool calls
   public async callEpicTool(toolName: string, args: any): Promise<any> {
