@@ -161,29 +161,28 @@ Meteor.startup(async () => {
 });
 
 // Helper function to categorize tools for better logging
+// Fix for server/main.ts - Replace the categorizeTools function
+
 function categorizeTools(tools: any[]): Record<string, number> {
   const categories: Record<string, number> = {};
   
   tools.forEach(tool => {
     let category = 'Other';
     
-    if (tool.name.toLowerCase().includes('patient') || 
-        tool.name.toLowerCase().includes('observation') ||
-        tool.name.toLowerCase().includes('medication') ||
-        tool.name.toLowerCase().includes('condition') ||
-        tool.name.toLowerCase().includes('encounter')) {
-      if (tool.description?.toLowerCase().includes('epic') || 
-          tool.name.toLowerCase().includes('epic')) {
-        category = 'Epic EHR';
-      } else {
-        category = 'Aidbox FHIR';
-      }
-    } else if (tool.name.toLowerCase().includes('document') ||
-               tool.name.toLowerCase().includes('upload') ||
-               tool.name.toLowerCase().includes('extract')) {
+    // Epic EHR tools - tools with 'epic' prefix
+    if (tool.name.toLowerCase().startsWith('epic')) {
+      category = 'Epic EHR';
+    }
+    // Aidbox FHIR tools - standard FHIR operations without 'epic' prefix from Aidbox
+    else if (isAidboxFHIRTool(tool)) {
+      category = 'Aidbox FHIR';
+    }
+    // Medical Document tools - document processing operations
+    else if (isDocumentTool(tool)) {
       category = 'Medical Documents';
-    } else if (tool.name.toLowerCase().includes('search') ||
-               tool.name.toLowerCase().includes('semantic')) {
+    }
+    // Search & Analysis tools - AI/ML operations
+    else if (isSearchAnalysisTool(tool)) {
       category = 'Search & Analysis';
     }
     
@@ -191,6 +190,38 @@ function categorizeTools(tools: any[]): Record<string, number> {
   });
   
   return categories;
+}
+
+function isAidboxFHIRTool(tool: any): boolean {
+  const aidboxFHIRToolNames = [
+    'searchPatients', 'getPatientDetails', 'createPatient', 'updatePatient',
+    'getPatientObservations', 'createObservation',
+    'getPatientMedications', 'createMedicationRequest',
+    'getPatientConditions', 'createCondition',
+    'getPatientEncounters', 'createEncounter'
+  ];
+  
+  // Must be in the Aidbox tool list AND not start with 'epic'
+  return aidboxFHIRToolNames.includes(tool.name) && 
+         !tool.name.toLowerCase().startsWith('epic');
+}
+
+function isDocumentTool(tool: any): boolean {
+  const documentToolNames = [
+    'uploadDocument', 'searchDocuments', 'listDocuments',
+    'chunkAndEmbedDocument', 'generateEmbeddingLocal'
+  ];
+  
+  return documentToolNames.includes(tool.name);
+}
+
+function isSearchAnalysisTool(tool: any): boolean {
+  const analysisToolNames = [
+    'analyzePatientHistory', 'findSimilarCases', 'getMedicalInsights',
+    'extractMedicalEntities', 'semanticSearchLocal'
+  ];
+  
+  return analysisToolNames.includes(tool.name);
 }
 
 // Helper function to get emoji for tool categories

@@ -170,50 +170,96 @@ export class MCPClientManager {
     return mergedTools;
   }
 
-  private logAvailableTools(): void {
-    console.log('\n🔧 Available Tools for Intelligent Selection:');
-    
-    const aidboxTools = this.availableTools.filter(t => 
-      t.name.includes('Patient') || t.name.includes('Observation') || 
-      t.name.includes('Medication') || t.name.includes('Condition') || 
-      t.name.includes('Encounter') || t.name.includes('searchPatients')
-    );
-    
-    const epicTools = this.availableTools.filter(t => 
-      t.description?.toLowerCase().includes('epic') || 
-      (t.name.includes('Patient') && !aidboxTools.includes(t)) ||
-      t.name.includes('getPatientDetails') ||
-      t.name.includes('getPatientObservations') ||
-      t.name.includes('getPatientMedications') ||
-      t.name.includes('getPatientConditions') ||
-      t.name.includes('getPatientEncounters')
-    );
-    
-    const documentTools = this.availableTools.filter(t => 
-      t.name.includes('Document') || t.name.includes('upload') || 
-      (t.name.includes('search') && !t.name.includes('Patient'))
-    );
-    
-    if (aidboxTools.length > 0) {
-      console.log('🏥 Aidbox FHIR Tools:');
-      aidboxTools.forEach(tool => console.log(`   • ${tool.name} - ${tool.description?.substring(0, 60)}...`));
-    }
-    
-    if (epicTools.length > 0) {
-      console.log('🏥 Epic EHR Tools:');
-      epicTools.forEach(tool => console.log(`   • ${tool.name} - ${tool.description?.substring(0, 60)}...`));
-    }
-    
-    if (documentTools.length > 0) {
-      console.log('📄 Document Tools:');
-      documentTools.forEach(tool => console.log(`   • ${tool.name} - ${tool.description?.substring(0, 60)}...`));
-    }
-    
-    console.log(`\n🧠 Claude will intelligently select from ${this.availableTools.length} total tools based on user queries`);
-    
-    // Debug: Check for duplicates
-    this.debugToolDuplicates();
+// Fix for imports/api/mcp/mcpClientManager.ts - Replace the logAvailableTools method
+
+private logAvailableTools(): void {
+  console.log('\n🔧 Available Tools for Intelligent Selection:');
+  
+  // Separate tools by actual source/type, not by pattern matching
+  const epicTools = this.availableTools.filter(t => 
+    t.name.toLowerCase().startsWith('epic')
+  );
+  
+  const aidboxTools = this.availableTools.filter(t => 
+    this.isAidboxFHIRTool(t) && !t.name.toLowerCase().startsWith('epic')
+  );
+  
+  const documentTools = this.availableTools.filter(t => 
+    this.isDocumentTool(t)
+  );
+  
+  const analysisTools = this.availableTools.filter(t => 
+    this.isAnalysisTool(t)
+  );
+  
+  const otherTools = this.availableTools.filter(t => 
+    !epicTools.includes(t) && 
+    !aidboxTools.includes(t) && 
+    !documentTools.includes(t) && 
+    !analysisTools.includes(t)
+  );
+  
+  if (aidboxTools.length > 0) {
+    console.log('🏥 Aidbox FHIR Tools:');
+    aidboxTools.forEach(tool => console.log(`   • ${tool.name} - ${tool.description?.substring(0, 60)}...`));
   }
+  
+  if (epicTools.length > 0) {
+    console.log('🏥 Epic EHR Tools:');
+    epicTools.forEach(tool => console.log(`   • ${tool.name} - ${tool.description?.substring(0, 60)}...`));
+  }
+  
+  if (documentTools.length > 0) {
+    console.log('📄 Document Tools:');
+    documentTools.forEach(tool => console.log(`   • ${tool.name} - ${tool.description?.substring(0, 60)}...`));
+  }
+  
+  if (analysisTools.length > 0) {
+    console.log('🔍 Search & Analysis Tools:');
+    analysisTools.forEach(tool => console.log(`   • ${tool.name} - ${tool.description?.substring(0, 60)}...`));
+  }
+  
+  if (otherTools.length > 0) {
+    console.log('🔧 Other Tools:');
+    otherTools.forEach(tool => console.log(`   • ${tool.name} - ${tool.description?.substring(0, 60)}...`));
+  }
+  
+  console.log(`\n🧠 Claude will intelligently select from ${this.availableTools.length} total tools based on user queries`);
+  
+  // Debug: Check for duplicates
+  this.debugToolDuplicates();
+}
+
+// Add these helper methods to MCPClientManager class
+private isAidboxFHIRTool(tool: any): boolean {
+  const aidboxFHIRToolNames = [
+    'searchPatients', 'getPatientDetails', 'createPatient', 'updatePatient',
+    'getPatientObservations', 'createObservation',
+    'getPatientMedications', 'createMedicationRequest',
+    'getPatientConditions', 'createCondition',
+    'getPatientEncounters', 'createEncounter'
+  ];
+  
+  return aidboxFHIRToolNames.includes(tool.name);
+}
+
+private isDocumentTool(tool: any): boolean {
+  const documentToolNames = [
+    'uploadDocument', 'searchDocuments', 'listDocuments',
+    'chunkAndEmbedDocument', 'generateEmbeddingLocal'
+  ];
+  
+  return documentToolNames.includes(tool.name);
+}
+
+private isAnalysisTool(tool: any): boolean {
+  const analysisToolNames = [
+    'analyzePatientHistory', 'findSimilarCases', 'getMedicalInsights',
+    'extractMedicalEntities', 'semanticSearchLocal'
+  ];
+  
+  return analysisToolNames.includes(tool.name);
+}
 
   // Debug method to identify duplicate tools
   private debugToolDuplicates(): void {
