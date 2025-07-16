@@ -78,14 +78,6 @@ const SimpleSidebar: React.FC<{
       <div className="sidebar-header">
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-semibold text-foreground">Chats</h2>
-          <button
-            onClick={onClose}
-            className="button button-ghost button-sm md:hidden"
-          >
-            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
         </div>
         
         <button

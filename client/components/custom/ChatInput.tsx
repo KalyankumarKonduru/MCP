@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { Textarea } from "../ui/Textarea";
 import { cn } from '/imports/lib/utils';
 import { Button } from "../ui/Button";
+import { ArrowUp } from 'lucide-react';
 import { ArrowUpIcon } from "./Icons";
 import { Upload, Paperclip } from 'lucide-react';
 
@@ -10,29 +11,6 @@ interface ChatInputProps {
   onFileUpload: (file: File) => void;
   disabled?: boolean;
 }
-
-const suggestedActions = [
-  {
-    title: "Upload medical document",
-    label: "PDF or image file",
-    action: "I'd like to upload a medical document",
-  },
-  {
-    title: "Search patient diagnosis",
-    label: "Find specific conditions",
-    action: "What diagnoses does the patient have?",
-  },
-  {
-    title: "Review medications",
-    label: "Current prescriptions",
-    action: "Show me the patient's current medications",
-  },
-  {
-    title: "Lab results summary",
-    label: "Recent test results",
-    action: "What are the latest lab results?",
-  },
-];
 
 export const ChatInput: React.FC<ChatInputProps> = ({ onSubmit, onFileUpload, disabled }) => {
   const [question, setQuestion] = useState('');
@@ -72,102 +50,74 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSubmit, onFileUpload, di
   };
 
   return (
-    <div className="relative w-full flex flex-col gap-4 chat-input-container">
-      {showSuggestions && (
-        <div className="hidden md:grid sm:grid-cols-2 gap-2 w-full suggestion-actions">
-          {suggestedActions.map((suggestedAction, index) => (
-            <div
-              key={index}
-              className={index > 1 ? "hidden sm:block" : "block"}
-              style={{
-                animation: `fadeIn 0.3s ease-out ${0.05 * index}s both`
-              }}
-            >
-              <Button
-                variant="ghost"
-                onClick={() => handleSuggestionClick(suggestedAction.action)}
-                className={cn(
-                  "text-left border border-border rounded-xl px-4 py-3.5 text-sm flex-1 gap-1 sm:flex-col w-full h-auto justify-start items-start",
-                  "bg-card text-card-foreground hover:bg-accent hover:text-accent-foreground",
-                  "transition-colors duration-200 suggestion-card"
-                )}
-                style={{ height: 'auto' }}
-              >
-                <span className="font-medium text-foreground">{suggestedAction.title}</span>
-                <span className="text-muted-foreground">
-                  {suggestedAction.label}
-                </span>
-              </Button>
-            </div>
-          ))}
-        </div>
-      )}
-      
-      <div className="relative flex gap-2">
-        {/* Hidden file input */}
-        <input
-          type="file"
-          ref={fileInputRef}
-          onChange={handleFileSelect}
-          accept=".pdf,.png,.jpg,.jpeg"
-          className="hidden"
+    <div className="input-container">
+      {/* Hidden file input */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileSelect}
+        accept=".pdf,.png,.jpg,.jpeg"
+        className="hidden"
+      />
+
+      {/* Text input area with inline buttons */}
+      <div className="textarea-container">
+        <Textarea
+          placeholder="Ask about medical documents or type a message..."
+          className="chat-textarea"
+          value={question}
+          onChange={(e) => setQuestion(e.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" && !event.shiftKey) {
+              event.preventDefault();
+              if (!disabled) {
+                setShowSuggestions(false);
+                handleSubmit();
+              }
+            }
+          }}
+          rows={3}
+          autoFocus
         />
-        
-        {/* Upload button */}
+
+        {/* Upload button - inline with textarea */}
         <Button
-          variant="outline"
+          variant="ghost"
           size="sm"
           onClick={handleUploadClick}
           disabled={disabled}
-          className="flex items-center gap-2 px-3 py-2 h-auto self-end mb-2"
+          className="upload-button-inline"
           title="Upload medical document"
         >
           <Paperclip className="h-4 w-4" />
-          <span className="hidden sm:inline">Upload</span>
         </Button>
 
-        {/* Text input area */}
-        <div className="relative flex-1">
-          <Textarea
-            placeholder="Ask about medical documents or type a message..."
-            className={cn(
-              "min-h-24 overflow-hidden resize-none rounded-xl text-base pr-12",
-              "bg-muted border-border text-foreground placeholder:text-muted-foreground",
-              "focus-visible:border-ring transition-colors duration-200"
-            )}
-            value={question}
-            onChange={(e) => setQuestion(e.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" && !event.shiftKey) {
-                event.preventDefault();
-                if (!disabled) {
-                  setShowSuggestions(false);
-                  handleSubmit();
-                }
-              }
-            }}
-            rows={3}
-            autoFocus
-          />
-
-          <Button
-            className={cn(
-              "rounded-full absolute bottom-2 right-2",
-              "bg-primary text-primary-foreground hover:bg-primary/90",
-              "transition-colors duration-200"
-            )}
-            style={{ 
-              padding: '0.375rem',
-              height: 'fit-content',
-              margin: '0.125rem',
-              border: '1px solid var(--border)'
-            }}
-            onClick={handleSubmit}
-            disabled={question.length === 0 || disabled}
+        {/* Send button with guaranteed visible arrow */}
+        <Button
+          className="send-button"
+          onClick={handleSubmit}
+          disabled={question.length === 0 || disabled}
+        >
+          <ArrowUp size={14} />
+          {/* Try ArrowUpIcon first, fallback to SVG */}
+          <ArrowUpIcon size={14} />
+          {/* Fallback SVG in case ArrowUpIcon doesn't render */}
+          <svg 
+            width="14" 
+            height="14" 
+            viewBox="0 0 16 16" 
+            fill="currentColor"
+            style={{ display: 'none' }} // Hide by default, show via CSS if needed
+            className="fallback-arrow"
           >
-            <ArrowUpIcon size={14} />
-          </Button>
-        </div>
+            <path
+              fillRule="evenodd"
+              clipRule="evenodd"
+              d="M8.70711 1.39644C8.31659 1.00592 7.68342 1.00592 7.2929 1.39644L2.21968 6.46966L1.68935 6.99999L2.75001 8.06065L3.28034 7.53032L7.25001 3.56065V14.25V15H8.75001V14.25V3.56065L12.7197 7.53032L13.25 8.06065L14.3107 6.99999L13.7803 6.46966L8.70711 1.39644Z"
+            />
+          </svg>
+          
+        </Button>
       </div>
     </div>
   );
