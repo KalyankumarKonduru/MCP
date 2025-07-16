@@ -8,15 +8,16 @@ export const ThemeToggle: React.FC = () => {
 
   return (
     <Button
-      variant="outline"
-      size="sm"
+      variant="ghost"
+      size="icon"
       onClick={toggleTheme}
-      className="bg-background border text-muted-foreground hover:text-foreground"
+      className="theme-toggle focus-visible"
+      data-tooltip={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
     >
       {theme === 'dark' ? (
-        <Moon className="h-4 w-4" />
-      ) : (
         <Sun className="h-4 w-4" />
+      ) : (
+        <Moon className="h-4 w-4" />
       )}
     </Button>
   );

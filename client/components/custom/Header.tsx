@@ -2,8 +2,13 @@ import React, { useState } from 'react';
 import { Button } from '../ui/Button';
 import { ThemeToggle } from './ThemeToggle';
 import { ProviderSwitcher } from './ProviderSwitcher';
-import { Sidebar } from './Sidebar';
-import { Menu, Plus, Download, Upload } from 'lucide-react';
+import { 
+  Menu, 
+  Plus, 
+  Download, 
+  Upload, 
+  Settings
+} from 'lucide-react';
 import { Meteor } from 'meteor/meteor';
 
 interface HeaderProps {
@@ -11,16 +16,20 @@ interface HeaderProps {
   onSelectChat?: (chatId: string) => void;
   onDeleteChat?: (chatId: string) => void;
   currentSessionId?: string;
+  sidebarOpen?: boolean;
+  onToggleSidebar?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({ 
   onNewChat, 
   onSelectChat, 
   onDeleteChat,
-  currentSessionId 
+  currentSessionId,
+  sidebarOpen,
+  onToggleSidebar
 }) => {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
 
   const handleExport = async () => {
     if (!currentSessionId || isExporting) return;
@@ -29,7 +38,6 @@ export const Header: React.FC<HeaderProps> = ({
     try {
       const exportData = await Meteor.callAsync('sessions.export', currentSessionId);
       
-      // Create and download JSON file
       const dataStr = JSON.stringify(exportData, null, 2);
       const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
       
@@ -60,7 +68,6 @@ export const Header: React.FC<HeaderProps> = ({
         const text = await file.text();
         const data = JSON.parse(text);
         
-        // Validate the data structure
         if (!data.session || !data.messages || !data.version) {
           throw new Error('Invalid chat export file');
         }
@@ -78,56 +85,91 @@ export const Header: React.FC<HeaderProps> = ({
     input.click();
   };
 
+  const handleNewChat = () => {
+    onNewChat?.();
+    setShowMenu(false);
+  };
+
   return (
-    <>
-      <header className="header">
-        <div className="flex items-center space-x-2">
+    <header className="header">
+      <div className="flex items-center gap-3">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onToggleSidebar}
+          title="Toggle sidebar"
+        >
+          <Menu className="h-4 w-4" />
+        </Button>
+        
+        <h1 className="text-lg font-semibold">MCP Chat</h1>
+      </div>
+      
+      <div className="flex items-center gap-2">
+        {/* Desktop menu items */}
+        <div className="hidden md:flex items-center gap-2">
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setSidebarOpen(true)}
-            title="Open chat history"
+            onClick={handleExport}
+            disabled={!currentSessionId || isExporting}
+            title="Export current chat"
           >
-            <Menu className="h-4 w-4" />
+            <Download className="h-4 w-4" />
+            Export
           </Button>
-          <h1 className="text-lg font-semibold">MCP Chat</h1>
+          
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleImport}
+            title="Import chat"
+          >
+            <Upload className="h-4 w-4" />
+            Import
+          </Button>
         </div>
         
-        <div className="flex items-center gap-2">
-          {/* Export/Import buttons */}
-          <div className="hidden sm:flex items-center gap-1">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleExport}
-              disabled={!currentSessionId || isExporting}
-              title="Export current chat"
-            >
-              <Download className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleImport}
-              title="Import chat"
-            >
-              <Upload className="h-4 w-4" />
-            </Button>
-          </div>
+        {/* Mobile menu dropdown */}
+        <div className="md:hidden relative">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowMenu(!showMenu)}
+          >
+            <Settings className="h-4 w-4" />
+          </Button>
           
-          <ProviderSwitcher />
-          <ThemeToggle />
+          {showMenu && (
+            <>
+              <div 
+                className="sidebar-overlay active"
+                onClick={() => setShowMenu(false)}
+              />
+              <div className="provider-dropdown">
+                <button
+                  className="provider-option"
+                  onClick={handleExport}
+                  disabled={!currentSessionId || isExporting}
+                >
+                  <Download className="h-4 w-4" />
+                  Export chat
+                </button>
+                <button
+                  className="provider-option"
+                  onClick={handleImport}
+                >
+                  <Upload className="h-4 w-4" />
+                  Import chat
+                </button>
+              </div>
+            </>
+          )}
         </div>
-      </header>
-
-      <Sidebar
-        isOpen={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-        onNewChat={onNewChat}
-        onSelectChat={onSelectChat}
-        onDeleteChat={onDeleteChat}
-        currentSessionId={currentSessionId}
-      />
-    </>
+        
+        <ProviderSwitcher />
+        <ThemeToggle />
+      </div>
+    </header>
   );
 };

@@ -1,127 +1,201 @@
-// client/components/custom/Overview.tsx
 import React from 'react';
-import { MessageCircle, Bot as BotIcon, FileText, Search, Upload, Brain, Zap } from "lucide-react";
+import { 
+  Sparkles, 
+  FileText, 
+  Database, 
+  Search, 
+  Brain, 
+  Zap,
+  Activity,
+  Users,
+  Shield,
+  Globe
+} from "lucide-react";
 import { cn } from '/imports/lib/utils';
 
 export const Overview: React.FC = () => {
+  const capabilities = [
+    {
+      icon: <Brain className="h-6 w-6" />,
+      title: "Intelligent Tool Selection",
+      description: "I automatically choose the right medical tools based on your questions—no commands needed.",
+      examples: [
+        "\"Find diabetes patients\" → Uses patient search tools",
+        "\"Upload lab report\" → Uses document processing",
+        "\"Get medication history\" → Combines multiple data sources"
+      ]
+    },
+    {
+      icon: <FileText className="h-6 w-6" />,
+      title: "Medical Document Analysis",
+      description: "Upload PDFs, images, and medical reports for intelligent extraction and analysis.",
+      examples: [
+        "Automatic text extraction from any format",
+        "Medical entity recognition (diagnoses, medications)",
+        "Semantic search across all documents"
+      ]
+    },
+    {
+      icon: <Database className="h-6 w-6" />,
+      title: "Healthcare Data Integration",
+      description: "Access patient data from multiple healthcare systems seamlessly.",
+      examples: [
+        "Epic EHR: Electronic health records",
+        "Aidbox FHIR: Structured patient data", 
+        "Medical Documents: Uploaded reports and charts"
+      ]
+    },
+    {
+      icon: <Search className="h-6 w-6" />,
+      title: "Natural Language Queries",
+      description: "Ask questions naturally—I understand medical terminology and context.",
+      examples: [
+        "\"Show recent lab results for this patient\"",
+        "\"Compare treatment plans across similar cases\"",
+        "\"What medications is the patient taking?\""
+      ]
+    }
+  ];
+
+  const exampleQueries = [
+    {
+      icon: <Users className="h-4 w-4" />,
+      text: "Get me details about all Hank Preston available from Aidbox",
+      category: "Patient Search"
+    },
+    {
+      icon: <FileText className="h-4 w-4" />,
+      text: "Upload this lab report and find similar cases",
+      category: "Document Analysis"
+    },
+    {
+      icon: <Activity className="h-4 w-4" />,
+      text: "Show me lab results for patient erXuFYUfucBZaryVksYEcMg3",
+      category: "Clinical Data"
+    },
+    {
+      icon: <Database className="h-4 w-4" />,
+      text: "Search Epic for diabetes patients and get their medications",
+      category: "Multi-System Query"
+    }
+  ];
+
   return (
-    <div
-      className={cn(
-        "max-w-3xl mx-auto md:mt-20 overview-container",
-        "transition-colors duration-200"
-      )}
-      style={{
-        animation: 'fadeIn 0.3s ease-out 0.75s both',
-        transform: 'scale(0.98)',
-        animationFillMode: 'forwards'
-      }}
-    >
-      <div className="rounded-xl p-6 flex flex-col gap-8 leading-relaxed text-center max-w-xl mx-auto">
-        <div className="flex flex-row justify-center gap-4 items-center overview-icons">
-          <Brain size={44} className="text-blue-500" />
-          <span className="text-2xl text-foreground">+</span>
-          <BotIcon size={44} className="text-muted-foreground" />
-          <span className="text-2xl text-foreground">+</span>
-          <Zap size={44} className="text-yellow-500" />
+    <div className="overview-container">
+      <div className="overview-header">
+        <div className="flex items-center justify-center gap-3 mb-6">
+          <div className="w-12 h-12 bg-primary rounded-full flex items-center justify-center">
+            <Sparkles className="h-6 w-6 text-primary-foreground" />
+          </div>
+          <div className="text-4xl font-light text-muted-foreground">+</div>
+          <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+            <Shield className="h-6 w-6 text-white" />
+          </div>
         </div>
         
-        <div>
-          <h1 className="text-3xl font-bold mb-4 text-foreground">Welcome to MCP Pilot</h1>
-          <p className="text-muted-foreground mb-6">
-            Your intelligent medical assistant powered by Claude's advanced tool selection and healthcare integrations.
-          </p>
-          
-          <div className="text-left space-y-4">
-            <div className="rounded-lg p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-800 overview-card transition-colors duration-200">
-              <div className="flex items-center gap-2 mb-2">
-                <Brain className="h-5 w-5 text-blue-500 icon" />
-                <h3 className="font-semibold text-foreground">Intelligent Tool Selection</h3>
-              </div>
-              <p className="text-sm text-muted-foreground mb-2">
-                Claude automatically chooses the right tools based on your questions - no commands needed!
-              </p>
-              <div className="text-xs text-muted-foreground space-y-1">
-                <div>• "Get details about Hank Preston from Aidbox" → Uses patient search tools</div>
-                <div>• "Find diabetes documents" → Uses document search tools</div>
-                <div>• "What medications does this patient take?" → Combines multiple data sources</div>
-              </div>
+        <h1 className="overview-title">
+          How can I help you today?
+        </h1>
+        
+        <p className="overview-subtitle">
+          I'm your intelligent medical assistant powered by Claude's advanced reasoning and healthcare integrations. I can help you analyze medical documents, search patient records, and access healthcare data from multiple systems.
+        </p>
+      </div>
+
+      <div className="overview-grid">
+        {capabilities.map((capability, index) => (
+          <div 
+            key={index}
+            className="overview-card"
+            style={{
+              animationDelay: `${index * 150}ms`
+            }}
+          >
+            <div className="overview-card-icon">
+              {capability.icon}
             </div>
             
-            <div className="rounded-lg p-4 bg-card text-card-foreground overview-card transition-colors duration-200">
-              <div className="flex items-center gap-2 mb-2">
-                <FileText className="h-5 w-5 text-green-500 icon" />
-                <h3 className="font-semibold text-foreground">Smart Document Processing</h3>
-              </div>
-              <p className="text-sm text-muted-foreground mb-2">
-                Upload medical documents and Claude will intelligently extract and analyze information:
-              </p>
-              <div className="text-xs text-muted-foreground space-y-1">
-                <div>• Automatic text extraction from PDFs and images</div>
-                <div>• Medical entity recognition (diagnoses, medications, etc.)</div>
-                <div>• Semantic search across all uploaded documents</div>
-              </div>
+            <div className="overview-card-title">
+              {capability.title}
             </div>
             
-            <div className="rounded-lg p-4 bg-card text-card-foreground overview-card transition-colors duration-200">
-              <div className="flex items-center gap-2 mb-2">
-                <Search className="h-5 w-5 text-purple-500 icon" />
-                <h3 className="font-semibold text-foreground">Multi-Source Healthcare Data</h3>
-              </div>
-              <p className="text-sm text-muted-foreground mb-2">
-                Access patient data from multiple healthcare systems:
-              </p>
-              <div className="text-xs text-muted-foreground space-y-1">
-                <div>• **Aidbox FHIR**: Patient records, observations, medications</div>
-                <div>• **Epic EHR**: Electronic health records integration</div>
-                <div>• **Medical Documents**: Uploaded reports and charts</div>
-              </div>
+            <div className="overview-card-description">
+              {capability.description}
             </div>
-
-            <div className="rounded-lg p-4 bg-card text-card-foreground overview-card transition-colors duration-200">
-              <div className="flex items-center gap-2 mb-2">
-                <MessageCircle className="h-5 w-5 text-indigo-500 icon" />
-                <h3 className="font-semibold text-foreground">Natural Conversation</h3>
-              </div>
-              <p className="text-sm text-muted-foreground mb-2">
-                Just ask questions naturally - Claude understands context and medical terminology:
-              </p>
-              <div className="text-xs text-muted-foreground space-y-1">
-                <div>• "Show me recent lab results for this patient"</div>
-                <div>• "Compare treatment plans across similar cases"</div>
-                <div>• "What's the patient's medication history?"</div>
-              </div>
+            
+            <div className="mt-4 space-y-2">
+              {capability.examples.map((example, exampleIndex) => (
+                <div 
+                  key={exampleIndex}
+                  className="text-xs text-muted-foreground bg-muted rounded-lg px-3 py-2"
+                >
+                  {example}
+                </div>
+              ))}
             </div>
           </div>
-          
-          <div className="mt-6 p-4 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border border-green-200 dark:border-green-800 rounded-lg tip-box transition-colors duration-200">
-            <div className="flex items-start gap-2">
-              <Zap className="h-4 w-4 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
-              <div className="text-sm">
-                <p className="font-medium text-green-800 dark:text-green-200 mb-1">
-                  Powered by Claude's Intelligence
-                </p>
-                <p className="text-green-700 dark:text-green-300">
-                  No need to learn commands or syntax. Claude automatically selects the right tools and data sources based on your questions. Just type naturally and let AI handle the complexity!
-                </p>
-              </div>
-            </div>
-          </div>
+        ))}
+      </div>
 
-          <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg tip-box transition-colors duration-200">
-            <div className="flex items-start gap-2">
-              <Brain className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
-              <div className="text-sm">
-                <p className="font-medium text-blue-800 dark:text-blue-200 mb-1">
-                  Try These Examples
-                </p>
-                <div className="text-blue-700 dark:text-blue-300 space-y-1">
-                  <div>💭 "Get me details about all Hank Preston available from Aidbox"</div>
-                  <div>🔍 "Search for diabetes documents and analyze treatment patterns"</div>
-                  <div>📊 "Show me lab results for patient erXuFYUfucBZaryVksYEcMg3"</div>
+      <div className="mt-12 max-w-4xl mx-auto">
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center gap-2 bg-gradient-to-r from-primary/10 to-blue-500/10 rounded-full px-4 py-2 mb-4">
+            <Zap className="h-4 w-4 text-primary" />
+            <span className="text-sm font-medium">Try these examples</span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {exampleQueries.map((query, index) => (
+            <div
+              key={index}
+              className="group cursor-pointer bg-muted/50 hover:bg-muted border border-transparent hover:border-primary/20 rounded-lg p-4 transition-all duration-200"
+              style={{
+                animationDelay: `${600 + index * 100}ms`
+              }}
+            >
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0 w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                  {query.icon}
+                </div>
+                
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-medium text-primary mb-1">
+                    {query.category}
+                  </div>
+                  <div className="text-sm text-foreground group-hover:text-primary transition-colors">
+                    "{query.text}"
+                  </div>
                 </div>
               </div>
             </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-12 max-w-2xl mx-auto">
+        <div className="bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-950/20 dark:to-blue-950/20 border border-green-200 dark:border-green-800 rounded-xl p-6">
+          <div className="flex items-start gap-4">
+            <div className="flex-shrink-0 w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
+              <Brain className="h-5 w-5 text-green-600 dark:text-green-400" />
+            </div>
+            
+            <div className="flex-1">
+              <div className="text-sm font-medium text-green-800 dark:text-green-200 mb-2">
+                Powered by Claude's Intelligence
+              </div>
+              <div className="text-sm text-green-700 dark:text-green-300 leading-relaxed">
+                No need to learn commands or syntax. I automatically select the right tools and data sources based on your natural language questions. Just ask what you need, and I'll handle the complexity behind the scenes.
+              </div>
+            </div>
           </div>
+        </div>
+      </div>
+
+      <div className="mt-8 text-center">
+        <div className="inline-flex items-center gap-2 text-xs text-muted-foreground">
+          <Globe className="h-3 w-3" />
+          <span>Connected to Epic EHR, Aidbox FHIR, and Medical Document systems</span>
         </div>
       </div>
     </div>

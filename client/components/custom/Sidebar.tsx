@@ -1,193 +1,188 @@
-// Updated Sidebar.tsx
 import React, { useState } from 'react';
-import { useTracker } from 'meteor/react-meteor-data';
 import { Button } from '../ui/Button';
-import { ScrollArea } from '../ui/ScrollArea';
-import { PlusCircle, X, Trash2, ChevronRight } from 'lucide-react';
+import { ThemeToggle } from './ThemeToggle';
+import { ProviderSwitcher } from './ProviderSwitcher';
+import { Sidebar } from './Sidebar';
+import { 
+  Menu, 
+  Plus, 
+  Download, 
+  Upload, 
+  Settings
+} from 'lucide-react';
+import { Meteor } from 'meteor/meteor';
 import { cn } from '/imports/lib/utils';
-import { SessionsCollection } from '/imports/api/sessions/sessions';
 
-interface SidebarProps {
-  isOpen: boolean;
-  onClose: () => void;
+interface HeaderProps {
   onNewChat?: () => void;
   onSelectChat?: (chatId: string) => void;
   onDeleteChat?: (chatId: string) => void;
   currentSessionId?: string;
+  sidebarOpen?: boolean;
+  onToggleSidebar?: () => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ 
-  isOpen, 
-  onClose, 
+export const Header: React.FC<HeaderProps> = ({ 
   onNewChat, 
-  onSelectChat,
+  onSelectChat, 
   onDeleteChat,
-  currentSessionId
+  currentSessionId,
+  sidebarOpen,
+  onToggleSidebar
 }) => {
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
 
-  // Subscribe to sessions list
-  const sessions = useTracker(() => {
-    const handle = Meteor.subscribe('sessions.list', 50);
-    if (!handle.ready()) return [];
+  const handleExport = async () => {
+    if (!currentSessionId || isExporting) return;
     
-    return SessionsCollection.find(
-      {},
-      { sort: { updatedAt: -1 } }
-    ).fetch();
-  }, []);
-
-  const handleDeleteChat = async (e: React.MouseEvent, sessionId: string) => {
-    e.stopPropagation();
-    setDeletingId(sessionId);
-    
+    setIsExporting(true);
     try {
-      await onDeleteChat?.(sessionId);
+      const exportData = await Meteor.callAsync('sessions.export', currentSessionId);
+      
+      const dataStr = JSON.stringify(exportData, null, 2);
+      const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+      
+      const exportFileDefaultName = `chat-export-${new Date().toISOString().split('T')[0]}.json`;
+      
+      const linkElement = document.createElement('a');
+      linkElement.setAttribute('href', dataUri);
+      linkElement.setAttribute('download', exportFileDefaultName);
+      linkElement.click();
+    } catch (error) {
+      console.error('Export failed:', error);
+      alert('Failed to export chat. Please try again.');
     } finally {
-      setDeletingId(null);
+      setIsExporting(false);
     }
+  };
+
+  const handleImport = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    
+    input.onchange = async (e: any) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      
+      try {
+        const text = await file.text();
+        const data = JSON.parse(text);
+        
+        if (!data.session || !data.messages || !data.version) {
+          throw new Error('Invalid chat export file');
+        }
+        
+        const newSessionId = await Meteor.callAsync('sessions.import', data);
+        onSelectChat?.(newSessionId);
+        
+        alert('Chat imported successfully!');
+      } catch (error) {
+        console.error('Import failed:', error);
+        alert('Failed to import chat. Please check the file format.');
+      }
+    };
+    
+    input.click();
+  };
+
+  const handleNewChat = () => {
+    onNewChat?.();
+    setShowMenu(false);
   };
 
   return (
     <>
-      {/* Mobile Overlay */}
-      {isOpen && (
-        <div 
-          className="fixed inset-0 bg-black/20 z-40 lg:hidden"
-          onClick={onClose}
-        />
-      )}
-      
-      {/* Sidebar - Updated positioning */}
-      <div
-        className={cn(
-          // Mobile: fixed positioning with transform
-          "lg:relative lg:translate-x-0 fixed inset-y-0 left-0 z-50",
-          // Width transitions
-          "lg:transition-all lg:duration-300 lg:ease-in-out",
-          isOpen ? "lg:w-64" : "lg:w-0",
-          // Mobile: always full width when open, hidden when closed
-          "w-64 lg:w-auto",
-          isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
-          // Background and border
-          "bg-white dark:bg-gray-950 border-r border-gray-200 dark:border-gray-700",
-          // Overflow handling
-          "overflow-hidden"
-        )}
-      >
-        <div className={cn(
-          "flex flex-col h-full transition-opacity duration-300",
-          isOpen ? "opacity-100" : "lg:opacity-0 opacity-100"
-        )}>
-          {/* Header */}
-          <div className="flex justify-between items-center px-3 py-4 border-b border-gray-200 dark:border-gray-700">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Chats</h2>
-            <Button variant="ghost" size="sm" onClick={onClose} className="h-8 w-8 p-0">
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-
-          {/* New Chat Button */}
-          <div className="px-3 pb-2 pt-2 border-b border-gray-200 dark:border-gray-700">
-            <Button
-              onClick={() => {
-                onNewChat?.();
-                onClose();
-              }}
-              variant="outline"
-              className="w-full justify-start h-9 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800"
-              size="sm"
-            >
-              <PlusCircle className="h-4 w-4 mr-2" />
-              New chat
-            </Button>
-          </div>
-
-          {/* Sessions List */}
-          <ScrollArea className="flex-1">
-            <div className="px-2 py-2 space-y-1">
-              {sessions.length === 0 ? (
-                <div className="text-center text-gray-500 dark:text-gray-400 py-8 px-4">
-                  <p className="text-sm">No conversations yet</p>
-                </div>
-              ) : (
-                sessions.map((session) => (
-                  <div
-                    key={session._id}
-                    className={cn(
-                      "group relative flex items-center rounded-lg cursor-pointer transition-all duration-150",
-                      session._id === currentSessionId 
-                        ? "bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800" 
-                        : "hover:bg-gray-50 dark:hover:bg-gray-800/50",
-                      deletingId === session._id && "opacity-50"
-                    )}
-                    onClick={() => {
-                      onSelectChat?.(session._id!);
-                      onClose();
-                    }}
-                    onMouseEnter={() => setHoveredId(session._id!)}
-                    onMouseLeave={() => setHoveredId(null)}
-                  >
-                    {/* Arrow icon */}
-                    <div className="flex-shrink-0 w-6 h-9 flex items-center justify-center">
-                      <ChevronRight 
-                        className={cn(
-                          "h-3 w-3 text-gray-400 transition-opacity duration-150",
-                          session._id === currentSessionId 
-                            ? "opacity-100 text-blue-600 dark:text-blue-400" 
-                            : hoveredId === session._id 
-                              ? "opacity-60" 
-                              : "opacity-0"
-                        )} 
-                      />
-                    </div>
-
-                    {/* Content */}
-                    <div className="flex-1 min-w-0 py-2 pr-2">
-                      <div className="flex items-center justify-between">
-                        <span className={cn(
-                          "text-sm truncate",
-                          session._id === currentSessionId 
-                            ? "text-blue-900 dark:text-blue-100 font-medium" 
-                            : "text-gray-700 dark:text-gray-300"
-                        )}>
-                          {session.title}
-                        </span>
-
-                        {/* Delete button */}
-                        {hoveredId === session._id && session._id !== currentSessionId && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0 hover:bg-red-100 dark:hover:bg-red-900/30 hover:text-red-600 dark:hover:text-red-400 ml-1"
-                            onClick={(e) => handleDeleteChat(e, session._id!)}
-                            disabled={deletingId === session._id}
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
-                        )}
-                      </div>
-
-                      {/* Patient info */}
-                      {session.metadata?.patientId && (
-                        <div className={cn(
-                          "text-xs truncate mt-0.5",
-                          session._id === currentSessionId
-                            ? "text-blue-700 dark:text-blue-300"
-                            : "text-gray-500 dark:text-gray-400"
-                        )}>
-                          Patient: {session.metadata.patientId}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </ScrollArea>
+      <header className="header">
+        <div className="flex items-center gap-3">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onToggleSidebar}
+            title="Toggle sidebar"
+          >
+            <Menu className="h-4 w-4" />
+          </Button>
+          
+          <h1 className="text-lg font-semibold">MCP Chat</h1>
         </div>
-      </div>
+        
+        <div className="flex items-center gap-2">
+          {/* Desktop menu items */}
+          <div className="hidden md:flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExport}
+              disabled={!currentSessionId || isExporting}
+              title="Export current chat"
+            >
+              <Download className="h-4 w-4" />
+              Export
+            </Button>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleImport}
+              title="Import chat"
+            >
+              <Upload className="h-4 w-4" />
+              Import
+            </Button>
+          </div>
+          
+          {/* Mobile menu dropdown */}
+          <div className="md:hidden relative">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowMenu(!showMenu)}
+            >
+              <Settings className="h-4 w-4" />
+            </Button>
+            
+            {showMenu && (
+              <>
+                <div 
+                  className="sidebar-overlay active"
+                  onClick={() => setShowMenu(false)}
+                />
+                <div className="provider-dropdown">
+                  <button
+                    className="provider-option"
+                    onClick={handleExport}
+                    disabled={!currentSessionId || isExporting}
+                  >
+                    <Download className="h-4 w-4" />
+                    Export chat
+                  </button>
+                  <button
+                    className="provider-option"
+                    onClick={handleImport}
+                  >
+                    <Upload className="h-4 w-4" />
+                    Import chat
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+          
+          <ProviderSwitcher />
+          <ThemeToggle />
+        </div>
+      </header>
+
+      <Sidebar
+        isOpen={sidebarOpen || false}
+        onClose={() => onToggleSidebar?.()}
+        onNewChat={onNewChat}
+        onSelectChat={onSelectChat}
+        onDeleteChat={onDeleteChat}
+        currentSessionId={currentSessionId}
+      />
     </>
   );
 };
