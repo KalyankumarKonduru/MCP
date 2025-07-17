@@ -1,0 +1,77 @@
+{
+  "format": "web-program-pre1",
+  "manifest": [
+    {
+      "path": "52898a1cc56ff9418010186e5afa41cfeca0a606.js",
+      "where": "client",
+      "type": "js",
+      "cacheable": true,
+      "url": "/52898a1cc56ff9418010186e5afa41cfeca0a606.js?meteor_js_resource=true",
+      "size": 1570143,
+      "hash": "52898a1cc56ff9418010186e5afa41cfeca0a606",
+      "sri": "YamVlpTMXhng+cTk0XbB+HaPQ2D4HhB0nz2gkciu2AOyd7TzJuKB3a1xnAB0eYHn+f2QsYDf4BDyTvbeDEb90g=="
+    },
+    {
+      "path": "52898a1cc56ff9418010186e5afa41cfeca0a606.stats.json",
+      "where": "client",
+      "type": "json",
+      "cacheable": true,
+      "url": "/52898a1cc56ff9418010186e5afa41cfeca0a606.stats.json?meteor_js_resource=true",
+      "size": 80783,
+      "hash": "1d6cd04a86896c3aa811383aeb0125070997a5cd",
+      "sri": "zoNAEr4FO7ek3xaM6f1D2rhV3dBUNAlAJusheHebomgZAU6Ss7BZowIny5rmyJMGKh9Yc1wXaeQHeR0RgbkRYg=="
+    },
+    {
+      "path": "7ea4082594f3f9a4029735b6ad9b11a3fe40dd47.css",
+      "where": "client",
+      "type": "css",
+      "cacheable": true,
+      "url": "/7ea4082594f3f9a4029735b6ad9b11a3fe40dd47.css?meteor_css_resource=true",
+      "size": 21889,
+      "hash": "7ea4082594f3f9a4029735b6ad9b11a3fe40dd47",
+      "sri": "6E0MhfJCctbBsW3WyoGRVWl6m+XUvqW9cpQIiuUG5EklTXT3Zo9Fzt3Pjakje8410612tWvpMLxnyL4L7ODeYA=="
+    },
+    {
+      "path": "packages/promise/promise.d.ts",
+      "where": "client",
+      "type": "asset",
+      "cacheable": false,
+      "url": "/packages/promise/promise.d.ts",
+      "size": 633,
+      "hash": "4aa461da7ad90c74a51ddfccc84b055fc0403119",
+      "sri": "6MVw86BmnkmTtXXlCxaH8k7xIUcMZK4O57Nnu82uI5MJT9Fbru7Yv71SuHx+giKUM9wkRs7WkpqPWjADS+U2qw=="
+    },
+    {
+      "path": "packages/tracker/tracker.d.ts",
+      "where": "client",
+      "type": "asset",
+      "cacheable": false,
+      "url": "/packages/tracker/tracker.d.ts",
+      "size": 6096,
+      "hash": "93ebe1d7d6aed2b029129079014e3ebfd5e8bb8c",
+      "sri": "D7pwjdFz5YPTxAyDXrqMNZ9v65eWU+XZ8ASp8aLJaTSkoBScGaLOCxlnSzLKyfsYugreqjaynnaiUGpNhW/ldw=="
+    },
+    {
+      "path": "app/integrations/integration.yaml",
+      "where": "client",
+      "type": "asset",
+      "cacheable": false,
+      "url": "/integrations/integration.yaml",
+      "size": 337,
+      "hash": "0693d9d5d086abe19e7349731b0a9f452e4321fa",
+      "sri": null
+    },
+    {
+      "path": "head.html",
+      "where": "internal",
+      "type": "head",
+      "hash": "7bd010ef776f67d336c722d648e1a8684b43e28d"
+    },
+    {
+      "path": "body.html",
+      "where": "internal",
+      "type": "body",
+      "hash": "33a76f2b4c30f6e44559d748578e1b43c573b579"
+    }
+  ]
+}

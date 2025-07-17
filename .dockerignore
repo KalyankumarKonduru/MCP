@@ -1,0 +1,14 @@
+node_modules
+.meteor/local
+.git
+.gitignore
+README.md
+.vscode
+*.log
+build
+.DS_Store
+.meteor/.gitignore
+.meteor/packages
+.meteor/platforms
+.meteor/release
+.meteor/versions

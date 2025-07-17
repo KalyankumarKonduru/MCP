@@ -1,0 +1,38 @@
+services:
+  chatbot-app:
+    image: mcp-chatbot-meteor
+    ports:
+      - "3000:3000"
+    environment:
+      - ROOT_URL=http://localhost:3000
+      - MONGO_URL=mongodb://mongo:27017/meteor
+      - PORT=3000
+      - NODE_ENV=production
+      # Override MCP server URLs for Docker networking when running with other services
+      - MEDICAL_MCP_SERVER_URL=http://host.docker.internal:3001
+      - AIDBOX_MCP_SERVER_URL=http://host.docker.internal:3002
+      - EPIC_MCP_SERVER_URL=http://host.docker.internal:3003
+    depends_on:
+      - mongo
+    restart: unless-stopped
+    networks:
+      - chatbot-network
+
+  mongo:
+    image: mongo:7
+    ports:
+      - "27018:27017"  # External port 27018 to avoid conflicts with other MongoDB instances
+    environment:
+      - MONGO_INITDB_DATABASE=meteor
+    volumes:
+      - chatbot_mongo_data:/data/db
+    restart: unless-stopped
+    networks:
+      - chatbot-network
+
+volumes:
+  chatbot_mongo_data:
+
+networks:
+  chatbot-network:
+    driver: bridge
