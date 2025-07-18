@@ -229,62 +229,62 @@ export interface AidboxFHIROperations {
 export function createAidboxOperations(connection: AidboxServerConnection): AidboxFHIROperations {
   return {
     async searchPatients(query: any) {
-      const result = await connection.callTool('searchPatients', query);
+      const result = await connection.callTool('aidboxSearchPatients', query);
       return result.content?.[0]?.text ? JSON.parse(result.content[0].text) : result;
     },
 
     async getPatientDetails(patientId: string) {
-      const result = await connection.callTool('getPatientDetails', { patientId });
+      const result = await connection.callTool('aidboxGetPatientDetails', { patientId });
       return result.content?.[0]?.text ? JSON.parse(result.content[0].text) : result;
     },
 
     async createPatient(patientData: any) {
-      const result = await connection.callTool('createPatient', patientData);
+      const result = await connection.callTool('aidboxCreatePatient', patientData);
       return result.content?.[0]?.text ? JSON.parse(result.content[0].text) : result;
     },
 
     async updatePatient(patientId: string, updates: any) {
-      const result = await connection.callTool('updatePatient', { patientId, ...updates });
+      const result = await connection.callTool('aidboxUpdatePatient', { patientId, ...updates });
       return result.content?.[0]?.text ? JSON.parse(result.content[0].text) : result;
     },
 
     async getPatientObservations(patientId: string, options: any = {}) {
-      const result = await connection.callTool('getPatientObservations', { patientId, ...options });
+      const result = await connection.callTool('aidboxGetPatientObservations', { patientId, ...options });
       return result.content?.[0]?.text ? JSON.parse(result.content[0].text) : result;
     },
 
     async createObservation(observationData: any) {
-      const result = await connection.callTool('createObservation', observationData);
+      const result = await connection.callTool('aidboxCreateObservation', observationData);
       return result.content?.[0]?.text ? JSON.parse(result.content[0].text) : result;
     },
 
     async getPatientMedications(patientId: string, options: any = {}) {
-      const result = await connection.callTool('getPatientMedications', { patientId, ...options });
+      const result = await connection.callTool('aidboxGetPatientMedications', { patientId, ...options });
       return result.content?.[0]?.text ? JSON.parse(result.content[0].text) : result;
     },
 
     async createMedicationRequest(medicationData: any) {
-      const result = await connection.callTool('createMedicationRequest', medicationData);
+      const result = await connection.callTool('aidboxCreateMedicationRequest', medicationData);
       return result.content?.[0]?.text ? JSON.parse(result.content[0].text) : result;
     },
 
     async getPatientConditions(patientId: string, options: any = {}) {
-      const result = await connection.callTool('getPatientConditions', { patientId, ...options });
+      const result = await connection.callTool('aidboxGetPatientConditions', { patientId, ...options });
       return result.content?.[0]?.text ? JSON.parse(result.content[0].text) : result;
     },
 
     async createCondition(conditionData: any) {
-      const result = await connection.callTool('createCondition', conditionData);
+      const result = await connection.callTool('aidboxCreateCondition', conditionData);
       return result.content?.[0]?.text ? JSON.parse(result.content[0].text) : result;
     },
 
     async getPatientEncounters(patientId: string, options: any = {}) {
-      const result = await connection.callTool('getPatientEncounters', { patientId, ...options });
+      const result = await connection.callTool('aidboxGetPatientEncounters', { patientId, ...options });
       return result.content?.[0]?.text ? JSON.parse(result.content[0].text) : result;
     },
 
     async createEncounter(encounterData: any) {
-      const result = await connection.callTool('createEncounter', encounterData);
+      const result = await connection.callTool('aidboxCreateEncounter', encounterData);
       return result.content?.[0]?.text ? JSON.parse(result.content[0].text) : result;
     }
   };

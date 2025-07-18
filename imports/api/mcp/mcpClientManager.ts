@@ -431,6 +431,9 @@ private isAnalysisTool(tool: any): boolean {
 // Fix for imports/api/mcp/mcpClientManager.ts
 // Replace the callMCPTool method with proper routing
 
+// Fixed callMCPTool method for imports/api/mcp/mcpClientManager.ts
+// Replace the existing callMCPTool method with this corrected version
+
 public async callMCPTool(toolName: string, args: any): Promise<any> {
   console.log(`🔧 Routing tool: ${toolName} with args:`, JSON.stringify(args, null, 2));
   
@@ -462,12 +465,6 @@ public async callMCPTool(toolName: string, args: any): Promise<any> {
 
   // Aidbox tools - MUST go to Aidbox MCP Server (port 3002)
   const aidboxToolNames = [
-    'searchPatients', 'getPatientDetails', 'createPatient', 'updatePatient',
-    'getPatientObservations', 'createObservation',
-    'getPatientMedications', 'createMedicationRequest', 
-    'getPatientConditions', 'createCondition',
-    'getPatientEncounters', 'createEncounter',
-    // Also handle renamed aidbox tools if they exist
     'aidboxSearchPatients', 'aidboxGetPatientDetails', 'aidboxCreatePatient', 'aidboxUpdatePatient',
     'aidboxGetPatientObservations', 'aidboxCreateObservation',
     'aidboxGetPatientMedications', 'aidboxCreateMedicationRequest',
@@ -482,15 +479,9 @@ public async callMCPTool(toolName: string, args: any): Promise<any> {
     
     console.log(`🏥 Routing ${toolName} to Aidbox MCP Server (port 3002)`);
     try {
-      // Handle renamed tools by converting back to original name
-      let actualToolName = toolName;
-      if (toolName.startsWith('aidbox')) {
-        // Convert aidboxSearchPatients → searchPatients
-        actualToolName = toolName.charAt(6).toLowerCase() + toolName.slice(7);
-        console.log(`🔄 Converting renamed tool: ${toolName} → ${actualToolName}`);
-      }
-      
-      const result = await this.aidboxConnection.callTool(actualToolName, args);
+      // FIXED: Pass the full tool name with 'aidbox' prefix to the server
+      // The server expects the full tool names like 'aidboxCreatePatient'
+      const result = await this.aidboxConnection.callTool(toolName, args);
       console.log(`✅ Aidbox tool ${toolName} completed successfully`);
       return result;
     } catch (error) {

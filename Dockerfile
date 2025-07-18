@@ -1,48 +1,48 @@
-cd mcp-pilot-meteor
+# Development mode - runs meteor directly without building
+FROM ubuntu:22.04
 
-# 1. Clean up the failed container
-docker rm meteor-test
+# Install Node.js 18 and system dependencies
+RUN apt-get update && \
+    apt-get install -y curl gnupg2 software-properties-common && \
+    curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
+    apt-get install -y nodejs python3 build-essential && \
+    rm -rf /var/lib/apt/lists/*
 
-# 2. Build Meteor locally (this will work since you can run meteor locally)
-meteor build ../meteor-build --directory
+# Install Meteor
+RUN curl https://install.meteor.com/ | sh
 
-# 3. Create the runtime Dockerfile
-cat > Dockerfile.runtime << 'EOF'
-FROM node:18-alpine
+# Create meteor user
+RUN useradd -m -s /bin/bash meteor
 
-# Install curl for health checks
-RUN apk add --no-cache curl
-
+# Set working directory
 WORKDIR /app
 
-# Copy the pre-built Meteor bundle
-COPY ../meteor-build/bundle/ .
+# Copy the entire project
+COPY . .
 
-# Copy settings.json
-COPY settings.json .
+# Set proper ownership
+RUN chown -R meteor:meteor /app
 
-# Install production Node.js dependencies
-RUN cd programs/server && npm install --production
-
-# Create non-root user
-RUN addgroup -g 1001 -S meteor && \
-    adduser -S meteor -u 1001 -G meteor && \
-    chown -R meteor:meteor /app
-
+# Switch to meteor user
 USER meteor
 
+# Add Meteor to PATH
+ENV PATH="/home/meteor/.meteor:$PATH"
+
 # Set environment variables
+ENV METEOR_ALLOW_SUPERUSER=1
 ENV ROOT_URL=http://localhost:3000
 ENV PORT=3000
 
+# Install dependencies
+RUN meteor npm install
+
+# Expose port
 EXPOSE 3000
 
-HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
   CMD curl -f http://localhost:3000 || exit 1
 
-# Start the Node.js application
-CMD ["node", "main.js", "--settings", "settings.json"]
-EOF
-
-# 4. Build the runtime image
-docker build -f Dockerfile.runtime -t mcp-pilot-meteor-runtime .
+# Start Meteor in development mode (no --production flag)
+CMD ["meteor", "run", "--settings", "settings.json", "--port", "3000"]
