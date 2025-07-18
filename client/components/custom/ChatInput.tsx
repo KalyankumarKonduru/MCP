@@ -30,20 +30,28 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSubmit, onFileUpload, di
     setShowSuggestions(false);
   };
 
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      const validTypes = ['application/pdf', 'image/png', 'image/jpeg', 'image/jpg'];
-      if (validTypes.includes(file.type)) {
-        onFileUpload(file);
-        setShowSuggestions(false);
-      } else {
-        alert('Please select a PDF or image file (PNG, JPG, JPEG)');
+const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const file = event.target.files?.[0];
+  if (file) {
+    const validTypes = ['application/pdf', 'image/png', 'image/jpeg', 'image/jpg'];
+    if (validTypes.includes(file.type)) {
+      // Check file size (10MB limit)
+      if (file.size > 10 * 1024 * 1024) {
+        alert('File too large. Maximum size is 10MB.');
+        event.target.value = '';
+        return;
       }
-      // Reset file input
-      event.target.value = '';
+      
+      console.log('📤 Starting file upload:', file.name, file.type, file.size);
+      onFileUpload(file);
+      setShowSuggestions(false);
+    } else {
+      alert('Please select a PDF or image file (PNG, JPG, JPEG)');
     }
-  };
+    // Reset file input
+    event.target.value = '';
+  }
+};
 
   const handleUploadClick = () => {
     fileInputRef.current?.click();

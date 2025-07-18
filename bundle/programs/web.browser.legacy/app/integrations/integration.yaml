@@ -1,0 +1,11 @@
+chat_manifest:
+  version: "1.0.1"
+  description: "Integration manifest for MCP Pilot."
+
+integrations:
+  - name: "WeatherAPI"
+    description: "Get current weather information"
+  - name: "MarsRoverAPI"
+    description: "Get Mars rover images from NASA"
+  - name: "EPICImageAPI"
+    description: "Earth Polychromatic Imaging Camera images"

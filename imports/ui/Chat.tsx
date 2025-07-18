@@ -282,10 +282,88 @@ export const Chat: React.FC = () => {
     }
   };
 
-  const handleFileUpload = async (file: File) => {
-    // Your existing file upload logic here
-    console.log('File upload:', file.name);
-  };
+const handleFileUpload = async (file: File) => {
+  if (!sessionId) {
+    console.error('❌ No session ID available for file upload');
+    return;
+  }
+
+  setIsUploading(true);
+  console.log('📤 Processing file upload:', file.name);
+
+  try {
+    // Convert file to base64 with proper error handling
+    const base64Content = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result as string;
+        // Remove data URL prefix (e.g., "data:application/pdf;base64,")
+        const base64 = result.split(',')[1];
+        if (!base64) {
+          reject(new Error('Failed to convert file to base64'));
+          return;
+        }
+        resolve(base64);
+      };
+      reader.onerror = () => reject(new Error('Failed to read file'));
+      reader.readAsDataURL(file);
+    });
+
+    console.log('📄 File converted to base64, size:', base64Content.length);
+
+    // Upload document with proper metadata
+    const uploadResult = await Meteor.callAsync('medical.uploadDocument', {
+      filename: file.name,
+      content: base64Content,
+      mimeType: file.type,
+      patientName: currentPatient || 'Unknown Patient',
+      sessionId: sessionId
+    });
+
+    console.log('✅ Document uploaded successfully:', uploadResult);
+
+    // Process the document if needed
+    if (uploadResult.documentId) {
+      console.log('🔄 Processing document...');
+      const processResult = await Meteor.callAsync('medical.processDocument', uploadResult.documentId, sessionId);
+      console.log('✅ Document processed:', processResult);
+    }
+
+    // Add success message to chat
+    const successMessage = `📄 Document "${file.name}" uploaded successfully.`;
+    await Meteor.callAsync('messages.insert', {
+      content: successMessage,
+      role: 'assistant',
+      timestamp: new Date(),
+      sessionId
+    });
+
+  } catch (error: any) {
+    console.error('❌ File upload failed:', error);
+    
+    let errorMessage = 'Failed to upload document. ';
+    
+    if (error.message?.includes('File too large')) {
+      errorMessage += 'File is too large. Please use a file smaller than 10MB.';
+    } else if (error.message?.includes('Invalid file type')) {
+      errorMessage += 'Invalid file type. Please use PDF or image files only.';
+    } else if (error.message?.includes('MCP')) {
+      errorMessage += 'Medical document server is not available. Please contact administrator.';
+    } else {
+      errorMessage += error.message || 'Please try again.';
+    }
+
+    // Add error message to chat
+    await Meteor.callAsync('messages.insert', {
+      content: `❌ ${errorMessage}`,
+      role: 'assistant',
+      timestamp: new Date(),
+      sessionId
+    });
+  } finally {
+    setIsUploading(false);
+  }
+};
 
   const handleNewChat = async () => {
     try {
