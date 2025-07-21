@@ -5,13 +5,11 @@ import { useScrollToBottom } from './hooks/useScrollToBottom';
 import { MessagesCollection } from '/imports/api/messages/messages';
 import { SessionsCollection } from '/imports/api/sessions/sessions';
 import { cn } from '/imports/lib/utils';
-
-// Import only the components that definitely exist
 import { PreviewMessage, ThinkingMessage } from '/client/components/custom/Message';
 import { Overview } from '/client/components/custom/Overview';
 import { ChatInput } from '/client/components/custom/ChatInput';
 
-// Simple Header Component - inline to avoid import issues
+
 const SimpleHeader: React.FC<{
   onToggleSidebar: () => void;
   sidebarOpen: boolean;
@@ -29,11 +27,7 @@ const SimpleHeader: React.FC<{
           </svg>
         </button>
         
-        <h1 className="text-lg font-semibold">MCP Chat</h1>
-      </div>
-      
-      <div className="flex items-center gap-2">
-        {/* Add your existing header components here if needed */}
+        <h1 className="text-lg font-semibold">MedQuery</h1>
       </div>
     </header>
   );
@@ -284,12 +278,12 @@ export const Chat: React.FC = () => {
 
 const handleFileUpload = async (file: File) => {
   if (!sessionId) {
-    console.error('❌ No session ID available for file upload');
+    console.error(' No session ID available for file upload');
     return;
   }
 
   setIsUploading(true);
-  console.log('📤 Processing file upload:', file.name);
+  console.log(' Processing file upload:', file.name);
 
   try {
     // Convert file to base64 with proper error handling
@@ -309,7 +303,7 @@ const handleFileUpload = async (file: File) => {
       reader.readAsDataURL(file);
     });
 
-    console.log('📄 File converted to base64, size:', base64Content.length);
+    console.log(' File converted to base64, size:', base64Content.length);
 
     // Upload document with proper metadata
     const uploadResult = await Meteor.callAsync('medical.uploadDocument', {
@@ -320,17 +314,17 @@ const handleFileUpload = async (file: File) => {
       sessionId: sessionId
     });
 
-    console.log('✅ Document uploaded successfully:', uploadResult);
+    console.log(' Document uploaded successfully:', uploadResult);
 
     // Process the document if needed
     if (uploadResult.documentId) {
-      console.log('🔄 Processing document...');
+      console.log(' Processing document...');
       const processResult = await Meteor.callAsync('medical.processDocument', uploadResult.documentId, sessionId);
-      console.log('✅ Document processed:', processResult);
+      console.log(' Document processed:', processResult);
     }
 
     // Add success message to chat
-    const successMessage = `📄 Document "${file.name}" uploaded successfully.`;
+    const successMessage = ` Document "${file.name}" uploaded successfully.`;
     await Meteor.callAsync('messages.insert', {
       content: successMessage,
       role: 'assistant',
@@ -339,7 +333,7 @@ const handleFileUpload = async (file: File) => {
     });
 
   } catch (error: any) {
-    console.error('❌ File upload failed:', error);
+    console.error(' File upload failed:', error);
     
     let errorMessage = 'Failed to upload document. ';
     
@@ -355,7 +349,7 @@ const handleFileUpload = async (file: File) => {
 
     // Add error message to chat
     await Meteor.callAsync('messages.insert', {
-      content: `❌ ${errorMessage}`,
+      content: ` ${errorMessage}`,
       role: 'assistant',
       timestamp: new Date(),
       sessionId

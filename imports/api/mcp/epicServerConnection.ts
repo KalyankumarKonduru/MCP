@@ -49,17 +49,17 @@ interface MCPRequest {
           }
         });
   
-        console.log('🏥 Epic MCP Initialize result:', initResult);
+        console.log(' Epic MCP Initialize result:', initResult);
   
         // Send initialized notification
         await this.sendNotification('initialized', {});
   
         // Test by listing tools
         const toolsResult = await this.sendRequest('tools/list', {});
-        console.log(`✅ Epic MCP Connection successful! Found ${toolsResult.tools?.length || 0} tools`);
+        console.log(` Epic MCP Connection successful! Found ${toolsResult.tools?.length || 0} tools`);
         
         if (toolsResult.tools) {
-          console.log('🏥 Available Epic tools:');
+          console.log(' Available Epic tools:');
           toolsResult.tools.forEach((tool: any, index: number) => {
             console.log(`   ${index + 1}. ${tool.name} - ${tool.description}`);
           });
@@ -68,7 +68,7 @@ interface MCPRequest {
         this.isInitialized = true;
         
       } catch (error) {
-        console.error('❌ Failed to connect to Epic MCP Server:', error);
+        console.error(' Failed to connect to Epic MCP Server:', error);
         throw error;
       }
     }
@@ -85,7 +85,7 @@ interface MCPRequest {
   
         if (response.ok) {
           const health = await response.json();
-          console.log('✅ Epic MCP Server health check passed:', health);
+          console.log('Epic MCP Server health check passed:', health);
           return { ok: true };
         } else {
           return { ok: false, error: `Server returned ${response.status}` };
@@ -118,7 +118,7 @@ interface MCPRequest {
           headers['mcp-session-id'] = this.sessionId;
         }
   
-        console.log(`🔄 Sending request to Epic MCP: ${method}`, { id, sessionId: this.sessionId });
+        console.log(` Sending request to Epic MCP: ${method}`, { id, sessionId: this.sessionId });
   
         const response = await fetch(`${this.baseUrl}/mcp`, {
           method: 'POST',
@@ -130,7 +130,7 @@ interface MCPRequest {
         const responseSessionId = response.headers.get('mcp-session-id');
         if (responseSessionId && !this.sessionId) {
           this.sessionId = responseSessionId;
-          console.log('🏥 Received Epic session ID:', this.sessionId);
+          console.log(' Received Epic session ID:', this.sessionId);
         }
   
         if (!response.ok) {
@@ -144,11 +144,11 @@ interface MCPRequest {
           throw new Error(`Epic MCP error ${result.error.code}: ${result.error.message}`);
         }
   
-        console.log(`✅ Epic request ${method} successful`);
+        console.log(` Epic request ${method} successful`);
         return result.result;
         
       } catch (error: any) {
-        console.error(`❌ Epic request failed for method ${method}:`, error);
+        console.error(` Epic request failed for method ${method}:`, error);
         throw error;
       }
     }
@@ -202,7 +202,7 @@ interface MCPRequest {
     disconnect() {
       this.sessionId = null;
       this.isInitialized = false;
-      console.log('🏥 Disconnected from Epic MCP Server');
+      console.log(' Disconnected from Epic MCP Server');
     }
   }
   

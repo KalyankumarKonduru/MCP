@@ -3,8 +3,8 @@
     "name": "standard-minifier-js",
     "version": "3.1.0"
   },
-  "totalMinifiedBytes": 1571879,
-  "totalMinifiedGzipBytes": 299966,
+  "totalMinifiedBytes": 1571787,
+  "totalMinifiedGzipBytes": 299932,
   "minifiedBytesByPackage": {
     "packages/core-runtime.js": 1921,
     "packages/meteor.js": 11918,
@@ -2180,7 +2180,7 @@
       {}
     ],
     "app/app.js": [
-      26250,
+      26158,
       {
         "imports": {
           "lib": {
@@ -2202,7 +2202,7 @@
               "useScrollToBottom.ts": 405
             },
             "App.tsx": 304,
-            "Chat.tsx": 8458
+            "Chat.tsx": 8366
           }
         },
         "client": {

@@ -29,7 +29,7 @@ export class MedicalServerConnection {
 
   async connect(): Promise<void> {
     try {
-      console.log(`📄 Connecting to Medical MCP Server at: ${this.baseUrl}`);
+      console.log(` Connecting to Medical MCP Server at: ${this.baseUrl}`);
       
       // Test if server is running
       const healthCheck = await this.checkServerHealth();
@@ -51,17 +51,17 @@ export class MedicalServerConnection {
         }
       });
 
-      console.log('📋 MCP Initialize result:', initResult);
+      console.log(' MCP Initialize result:', initResult);
 
       // Send initialized notification
       await this.sendNotification('initialized', {});
 
       // Test by listing tools
       const toolsResult = await this.sendRequest('tools/list', {});
-      console.log(`✅ MCP Streamable HTTP Connection successful! Found ${toolsResult.tools?.length || 0} tools`);
+      console.log(`MCP Streamable HTTP Connection successful! Found ${toolsResult.tools?.length || 0} tools`);
       
       if (toolsResult.tools) {
-        console.log('📋 Available tools:');
+        console.log(' Available tools:');
         toolsResult.tools.forEach((tool: any, index: number) => {
           console.log(`   ${index + 1}. ${tool.name} - ${tool.description}`);
         });
@@ -70,7 +70,7 @@ export class MedicalServerConnection {
       this.isInitialized = true;
       
     } catch (error) {
-      console.error('❌ Failed to connect to MCP Server via Streamable HTTP:', error);
+      console.error(' Failed to connect to MCP Server via Streamable HTTP:', error);
       throw error;
     }
   }
@@ -87,7 +87,7 @@ export class MedicalServerConnection {
 
       if (response.ok) {
         const health = await response.json();
-        console.log('✅ MCP Server health check passed:', health);
+        console.log(' MCP Server health check passed:', health);
         return { ok: true };
       } else {
         return { ok: false, error: `Server returned ${response.status}` };
@@ -121,7 +121,7 @@ export class MedicalServerConnection {
         headers['mcp-session-id'] = this.sessionId;
       }
 
-      console.log(`🔄 Sending Streamable HTTP request: ${method}`, { id, sessionId: this.sessionId });
+      console.log(` Sending Streamable HTTP request: ${method}`, { id, sessionId: this.sessionId });
 
       const response = await fetch(`${this.baseUrl}/mcp`, {
         method: 'POST',
@@ -134,7 +134,7 @@ export class MedicalServerConnection {
       const responseSessionId = response.headers.get('mcp-session-id');
       if (responseSessionId && !this.sessionId) {
         this.sessionId = responseSessionId;
-        console.log('📋 Received session ID:', this.sessionId);
+        console.log(' Received session ID:', this.sessionId);
       }
 
       if (!response.ok) {
@@ -147,15 +147,15 @@ export class MedicalServerConnection {
       
       // Handle SSE upgrade (optional in Streamable HTTP for streaming responses)
       if (contentType && contentType.includes('text/event-stream')) {
-        console.log('📡 Server upgraded to SSE for streaming response');
+        console.log(' Server upgraded to SSE for streaming response');
         return await this.handleStreamingResponse(response);
       }
 
       // Standard JSON response
       if (!contentType || !contentType.includes('application/json')) {
         const responseText = await response.text();
-        console.error('❌ Unexpected content type:', contentType);
-        console.error('❌ Response text:', responseText.substring(0, 200));
+        console.error(' Unexpected content type:', contentType);
+        console.error(' Response text:', responseText.substring(0, 200));
         throw new Error(`Expected JSON response but got ${contentType}`);
       }
 
@@ -165,11 +165,11 @@ export class MedicalServerConnection {
         throw new Error(`MCP error ${result.error.code}: ${result.error.message}`);
       }
 
-      console.log(`✅ Streamable HTTP request ${method} successful`);
+      console.log(` Streamable HTTP request ${method} successful`);
       return result.result;
       
     } catch (error: any) {
-      console.error(`❌ Streamable HTTP request failed for method ${method}:`, error);
+      console.error(` Streamable HTTP request failed for method ${method}:`, error);
       throw error;
     }
   }

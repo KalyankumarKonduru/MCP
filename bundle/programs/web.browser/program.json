@@ -2,33 +2,33 @@
   "format": "web-program-pre1",
   "manifest": [
     {
-      "path": "c7bb30cd1a36f778b7cf3e80d480200223f157d9.js",
+      "path": "2bce9d94e7af94609f83d4eee2fcddb721e28b01.js",
       "where": "client",
       "type": "js",
       "cacheable": true,
-      "url": "/c7bb30cd1a36f778b7cf3e80d480200223f157d9.js?meteor_js_resource=true",
-      "size": 1571879,
-      "hash": "c7bb30cd1a36f778b7cf3e80d480200223f157d9",
-      "sri": "ycYvyPPhzysV2Tr1JFq6+MSM9OnUNkkTv2o0YAqsSF4FlkMJgGQbb/y9mBCaakc7tQeH2s9pVxXwTV5YgfBI7Q=="
+      "url": "/2bce9d94e7af94609f83d4eee2fcddb721e28b01.js?meteor_js_resource=true",
+      "size": 1571787,
+      "hash": "2bce9d94e7af94609f83d4eee2fcddb721e28b01",
+      "sri": "7+EXF9+q/JSgkAJvx+cWxV5SgzefsC0vlPztX0FKb51RCLtgPcatThn5dj6h2KovWy3QUygciPRNM8rLVxw3ZQ=="
     },
     {
-      "path": "c7bb30cd1a36f778b7cf3e80d480200223f157d9.stats.json",
+      "path": "2bce9d94e7af94609f83d4eee2fcddb721e28b01.stats.json",
       "where": "client",
       "type": "json",
       "cacheable": true,
-      "url": "/c7bb30cd1a36f778b7cf3e80d480200223f157d9.stats.json?meteor_js_resource=true",
+      "url": "/2bce9d94e7af94609f83d4eee2fcddb721e28b01.stats.json?meteor_js_resource=true",
       "size": 80783,
-      "hash": "5e19c45bc8148a460ac078dfb7728b348c43d1a1",
-      "sri": "pWZYCoqXdG3I/eOySzfjoqb/+sU4zIcER2yqosxKQCVobMithoZW+TGDDSrEIv1HnZNQdk9vB6e4ppYYSvvvjA=="
+      "hash": "f1be0524b89f1f3e3f84708b03f11ae2b9c72fcd",
+      "sri": "c2ih4GMd43DG25tQD/GzNEk2nDhM0SQYg1f9bAAQ1Wd6pCCVTQ5Z/BjSk//4IdnuJfuWvbXJkzsyQWMDtNqDqg=="
     },
     {
-      "path": "7ea4082594f3f9a4029735b6ad9b11a3fe40dd47.css",
+      "path": "f791e1e0f90be6df89b9e40c408ce477a998fe38.css",
       "where": "client",
       "type": "css",
       "cacheable": true,
-      "url": "/7ea4082594f3f9a4029735b6ad9b11a3fe40dd47.css?meteor_css_resource=true",
+      "url": "/f791e1e0f90be6df89b9e40c408ce477a998fe38.css?meteor_css_resource=true",
       "size": 21889,
-      "hash": "7ea4082594f3f9a4029735b6ad9b11a3fe40dd47",
+      "hash": "f791e1e0f90be6df89b9e40c408ce477a998fe38",
       "sri": "6E0MhfJCctbBsW3WyoGRVWl6m+XUvqW9cpQIiuUG5EklTXT3Zo9Fzt3Pjakje8410612tWvpMLxnyL4L7ODeYA=="
     },
     {
@@ -65,7 +65,7 @@
       "path": "head.html",
       "where": "internal",
       "type": "head",
-      "hash": "7bd010ef776f67d336c722d648e1a8684b43e28d"
+      "hash": "67588be96d879a4c65b130640587c180e2db8c0c"
     },
     {
       "path": "body.html",

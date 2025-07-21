@@ -29,7 +29,7 @@ export class AidboxServerConnection {
 
   async connect(): Promise<void> {
     try {
-      console.log(`🏥 Connecting to Aidbox MCP Server at: ${this.baseUrl}`);
+      console.log(` Connecting to Aidbox MCP Server at: ${this.baseUrl}`);
       
       // Test if server is running
       const healthCheck = await this.checkServerHealth();
@@ -51,17 +51,17 @@ export class AidboxServerConnection {
         }
       });
 
-      console.log('🏥 Aidbox MCP Initialize result:', initResult);
+      console.log(' Aidbox MCP Initialize result:', initResult);
 
       // Send initialized notification
       await this.sendNotification('initialized', {});
 
       // Test by listing tools
       const toolsResult = await this.sendRequest('tools/list', {});
-      console.log(`✅ Aidbox MCP Connection successful! Found ${toolsResult.tools?.length || 0} tools`);
+      console.log(`Aidbox MCP Connection successful! Found ${toolsResult.tools?.length || 0} tools`);
       
       if (toolsResult.tools) {
-        console.log('🏥 Available Aidbox tools:');
+        console.log(' Available Aidbox tools:');
         toolsResult.tools.forEach((tool: any, index: number) => {
           console.log(`   ${index + 1}. ${tool.name} - ${tool.description}`);
         });
@@ -70,7 +70,7 @@ export class AidboxServerConnection {
       this.isInitialized = true;
       
     } catch (error) {
-      console.error('❌ Failed to connect to Aidbox MCP Server:', error);
+      console.error(' Failed to connect to Aidbox MCP Server:', error);
       throw error;
     }
   }
@@ -87,7 +87,7 @@ export class AidboxServerConnection {
 
       if (response.ok) {
         const health = await response.json();
-        console.log('✅ Aidbox MCP Server health check passed:', health);
+        console.log(' Aidbox MCP Server health check passed:', health);
         return { ok: true };
       } else {
         return { ok: false, error: `Server returned ${response.status}` };
@@ -121,7 +121,7 @@ export class AidboxServerConnection {
         headers['mcp-session-id'] = this.sessionId;
       }
 
-      console.log(`🔄 Sending request to Aidbox: ${method}`, { id, sessionId: this.sessionId });
+      console.log(` Sending request to Aidbox: ${method}`, { id, sessionId: this.sessionId });
 
       const response = await fetch(`${this.baseUrl}/mcp`, {
         method: 'POST',
@@ -134,7 +134,7 @@ export class AidboxServerConnection {
       const responseSessionId = response.headers.get('mcp-session-id');
       if (responseSessionId && !this.sessionId) {
         this.sessionId = responseSessionId;
-        console.log('🏥 Received Aidbox session ID:', this.sessionId);
+        console.log(' Received Aidbox session ID:', this.sessionId);
       }
 
       if (!response.ok) {
@@ -148,11 +148,11 @@ export class AidboxServerConnection {
         throw new Error(`Aidbox MCP error ${result.error.code}: ${result.error.message}`);
       }
 
-      console.log(`✅ Aidbox request ${method} successful`);
+      console.log(` Aidbox request ${method} successful`);
       return result.result;
       
     } catch (error: any) {
-      console.error(`❌ Aidbox request failed for method ${method}:`, error);
+      console.error(` Aidbox request failed for method ${method}:`, error);
       throw error;
     }
   }
@@ -206,7 +206,7 @@ export class AidboxServerConnection {
   disconnect() {
     this.sessionId = null;
     this.isInitialized = false;
-    console.log('🏥 Disconnected from Aidbox MCP Server');
+    console.log(' Disconnected from Aidbox MCP Server');
   }
 }
 

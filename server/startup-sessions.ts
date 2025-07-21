@@ -3,7 +3,7 @@ import { SessionsCollection } from '/imports/api/sessions/sessions';
 import { MessagesCollection } from '/imports/api/messages/messages';
 
 Meteor.startup(async () => {
-  console.log('🔧 Setting up session management...');
+  console.log(' Setting up session management...');
   
   // Create indexes for better performance
   try {
@@ -17,9 +17,9 @@ Meteor.startup(async () => {
     await MessagesCollection.createIndexAsync({ sessionId: 1, timestamp: 1 });
     await MessagesCollection.createIndexAsync({ sessionId: 1, role: 1 });
     
-    console.log('✅ Database indexes created successfully');
+    console.log(' Database indexes created successfully');
   } catch (error) {
-    console.error('❌ Error creating indexes:', error);
+    console.error(' Error creating indexes:', error);
   }
   
   // Cleanup old sessions (optional - remove sessions older than 30 days)
@@ -39,10 +39,10 @@ Meteor.startup(async () => {
         await SessionsCollection.removeAsync(session._id);
       }
       
-      console.log('✅ Old sessions cleaned up');
+      console.log(' Old sessions cleaned up');
     }
   } catch (error) {
-    console.error('❌ Error cleaning up old sessions:', error);
+    console.error(' Error cleaning up old sessions:', error);
   }
   
   // Log session statistics
@@ -51,11 +51,11 @@ Meteor.startup(async () => {
     const totalMessages = await MessagesCollection.countDocuments();
     const activeSessions = await SessionsCollection.countDocuments({ isActive: true });
     
-    console.log('📊 Session Statistics:');
+    console.log(' Session Statistics:');
     console.log(`   Total sessions: ${totalSessions}`);
     console.log(`   Active sessions: ${activeSessions}`);
     console.log(`   Total messages: ${totalMessages}`);
   } catch (error) {
-    console.error('❌ Error getting session statistics:', error);
+    console.error(' Error getting session statistics:', error);
   }
 });

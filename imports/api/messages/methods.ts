@@ -1,4 +1,3 @@
-// imports/api/messages/methods.ts
 import { Meteor } from 'meteor/meteor';
 import { check, Match } from 'meteor/check';
 import { MessagesCollection, Message } from './messages';
@@ -58,7 +57,7 @@ Meteor.methods({
       }
       
       try {
-        console.log(`🧠 Processing query with intelligent tool selection: "${query}"`);
+        console.log(` Processing query with intelligent tool selection: "${query}"`);
         
         // Build context for the query
         const context: any = { sessionId };
@@ -239,11 +238,11 @@ async 'medical.uploadDocument'(fileData: {
     sessionId: Match.Maybe(String)
   });
 
-  console.log(`📤 Upload request for: ${fileData.filename} (${fileData.mimeType})`);
-  console.log(`📊 Content size: ${fileData.content.length} chars`);
+  console.log(`  Upload request for: ${fileData.filename} (${fileData.mimeType})`);
+  console.log(` Content size: ${fileData.content.length} chars`);
 
   if (this.isSimulation) {
-    console.log('🔄 Simulation mode - returning mock document ID');
+    console.log(' Simulation mode - returning mock document ID');
     return { 
       success: true, 
       documentId: 'sim-' + Date.now(),
@@ -254,7 +253,7 @@ async 'medical.uploadDocument'(fileData: {
   const mcpManager = MCPClientManager.getInstance();
   
   if (!mcpManager.isReady()) {
-    console.error('❌ MCP Client not ready');
+    console.error(' MCP Client not ready');
     throw new Meteor.Error('mcp-not-ready', 'Medical document system is not available. Please contact administrator.');
   }
 
@@ -270,7 +269,7 @@ async 'medical.uploadDocument'(fileData: {
       throw new Error('File too large (max 10MB)');
     }
 
-    console.log(`📋 Estimated file size: ${Math.round(estimatedFileSize / 1024)}KB`);
+    console.log(` Estimated file size: ${Math.round(estimatedFileSize / 1024)}KB`);
 
     const medical = mcpManager.getMedicalOperations();
     
@@ -289,7 +288,7 @@ async 'medical.uploadDocument'(fileData: {
       }
     );
     
-    console.log('✅ MCP upload successful:', result);
+    console.log(' MCP upload successful:', result);
     
     // Update session metadata if we have session ID
     if (fileData.sessionId && result.documentId) {
@@ -303,9 +302,9 @@ async 'medical.uploadDocument'(fileData: {
             'metadata.lastUpload': new Date()
           }
         });
-        console.log('📝 Session metadata updated');
+        console.log(' Session metadata updated');
       } catch (updateError) {
-        console.warn('⚠️ Failed to update session metadata:', updateError);
+        console.warn(' Failed to update session metadata:', updateError);
         // Don't fail the whole operation for this
       }
     }
@@ -313,7 +312,7 @@ async 'medical.uploadDocument'(fileData: {
     return result;
     
   } catch (error: any) {
-    console.error('❌ Document upload error:', error);
+    console.error(' Document upload error:', error);
     
     // Provide specific error messages
     if (error.message?.includes('not connected') || error.message?.includes('ECONNREFUSED')) {
@@ -359,15 +358,11 @@ async 'medical.uploadDocument'(fileData: {
       return result;
       
     } catch (error) {
-      console.error('❌ Document processing error:', error);
+      console.error(' Document processing error:', error);
       throw new Meteor.Error('processing-failed', `Failed to process document: ${error.message || 'Unknown error'}`);
     }
   }
 });
-
-// ================================
-// HELPER FUNCTIONS
-// ================================
 
 // Helper function to extract and update context
 async function extractAndUpdateContext(

@@ -1,4 +1,3 @@
-// imports/api/mcp/mcpClientManager.ts
 import Anthropic from '@anthropic-ai/sdk';
 import { MedicalServerConnection, MedicalDocumentOperations, createMedicalOperations } from './medicalServerConnection';
 import { AidboxServerConnection, AidboxFHIROperations, createAidboxOperations } from './aidboxServerConnection';
@@ -11,7 +10,6 @@ export interface MCPClientConfig {
 }
 
 export class MCPClientManager {
-  private static instance: MCPClientManager;
   private anthropic?: Anthropic;
   private isInitialized = false;
   private config?: MCPClientConfig;
@@ -41,7 +39,7 @@ export class MCPClientManager {
   }
 
   public async initialize(config: MCPClientConfig): Promise<void> {
-    console.log('🤖 Initializing MCP Client with Intelligent Tool Selection');
+    console.log(' Initializing MCP Client with Intelligent Tool Selection');
     this.config = config;
 
     try {
@@ -50,13 +48,13 @@ export class MCPClientManager {
         this.anthropic = new Anthropic({
           apiKey: config.apiKey,
         });
-        console.log('✅ Anthropic client initialized with intelligent tool selection');
+        console.log(' Anthropic client initialized with intelligent tool selection');
       }
 
       this.isInitialized = true;
-      console.log(`✅ MCP Client ready with provider: ${config.provider}`);
+      console.log(`MCP Client ready with provider: ${config.provider}`);
     } catch (error) {
-      console.error('❌ Failed to initialize MCP client:', error);
+      console.error(' Failed to initialize MCP client:', error);
       throw error;
     }
   }
@@ -69,7 +67,7 @@ export class MCPClientManager {
                            process.env.MEDICAL_MCP_SERVER_URL || 
                            'http://localhost:3001';
       
-      console.log(`🏥 Connecting to Medical MCP Server at: ${mcpServerUrl}`);
+      console.log(` Connecting to Medical MCP Server at: ${mcpServerUrl}`);
       
       this.medicalConnection = new MedicalServerConnection(mcpServerUrl);
       await this.medicalConnection.connect();
@@ -79,11 +77,11 @@ export class MCPClientManager {
       const toolsResult = await this.medicalConnection.listTools();
       this.availableTools = toolsResult.tools || [];
       
-      console.log(`✅ Connected with ${this.availableTools.length} medical tools available`);
-      console.log(`📋 Medical tool names: ${this.availableTools.map(t => t.name).join(', ')}`);
+      console.log(` Connected with ${this.availableTools.length} medical tools available`);
+      console.log(` Medical tool names: ${this.availableTools.map(t => t.name).join(', ')}`);
       
     } catch (error) {
-      console.error('❌ Medical MCP Server HTTP connection failed:', error);
+      console.error(' Medical MCP Server HTTP connection failed:', error);
       throw error;
     }
   }
@@ -95,7 +93,7 @@ export class MCPClientManager {
                              process.env.AIDBOX_MCP_SERVER_URL || 
                              'http://localhost:3002';
       
-      console.log(`🏥 Connecting to Aidbox MCP Server at: ${aidboxServerUrl}`);
+      console.log(` Connecting to Aidbox MCP Server at: ${aidboxServerUrl}`);
       
       this.aidboxConnection = new AidboxServerConnection(aidboxServerUrl);
       await this.aidboxConnection.connect();
@@ -105,8 +103,8 @@ export class MCPClientManager {
       const toolsResult = await this.aidboxConnection.listTools();
       this.aidboxTools = toolsResult.tools || [];
       
-      console.log(`✅ Connected to Aidbox with ${this.aidboxTools.length} tools available`);
-      console.log(`📋 Aidbox tool names: ${this.aidboxTools.map(t => t.name).join(', ')}`);
+      console.log(` Connected to Aidbox with ${this.aidboxTools.length} tools available`);
+      console.log(` Aidbox tool names: ${this.aidboxTools.map(t => t.name).join(', ')}`);
       
       // Merge with existing tools, ensuring unique names
       this.availableTools = this.mergeToolsUnique(this.availableTools, this.aidboxTools);
@@ -114,7 +112,7 @@ export class MCPClientManager {
       this.logAvailableTools();
       
     } catch (error) {
-      console.error('❌ Aidbox MCP Server connection failed:', error);
+      console.error(' Aidbox MCP Server connection failed:', error);
       throw error;
     }
   }
@@ -126,7 +124,7 @@ export class MCPClientManager {
                            process.env.EPIC_MCP_SERVER_URL || 
                            'http://localhost:3003';
       
-      console.log(`🏥 Connecting to Epic MCP Server at: ${epicServerUrl}`);
+      console.log(` Connecting to Epic MCP Server at: ${epicServerUrl}`);
       
       this.epicConnection = new EpicServerConnection(epicServerUrl);
       await this.epicConnection.connect();
@@ -136,8 +134,8 @@ export class MCPClientManager {
       const toolsResult = await this.epicConnection.listTools();
       this.epicTools = toolsResult.tools || [];
       
-      console.log(`✅ Connected to Epic with ${this.epicTools.length} tools available`);
-      console.log(`📋 Epic tool names: ${this.epicTools.map(t => t.name).join(', ')}`);
+      console.log(` Connected to Epic with ${this.epicTools.length} tools available`);
+      console.log(` Epic tool names: ${this.epicTools.map(t => t.name).join(', ')}`);
       
       // Merge with existing tools, ensuring unique names
       this.availableTools = this.mergeToolsUnique(this.availableTools, this.epicTools);
@@ -145,7 +143,7 @@ export class MCPClientManager {
       this.logAvailableTools();
       
     } catch (error) {
-      console.error('❌ Epic MCP Server connection failed:', error);
+      console.error(' Epic MCP Server connection failed:', error);
       throw error;
     }
   }
@@ -157,7 +155,7 @@ export class MCPClientManager {
     const toolNameSet = new Set(existingTools.map(tool => tool.name));
     const uniqueNewTools = newTools.filter(tool => {
       if (toolNameSet.has(tool.name)) {
-        console.warn(`⚠️ Duplicate tool name found: ${tool.name} - skipping duplicate`);
+        console.warn(` Duplicate tool name found: ${tool.name} - skipping duplicate`);
         return false;
       }
       toolNameSet.add(tool.name);
@@ -165,15 +163,13 @@ export class MCPClientManager {
     });
     
     const mergedTools = [...existingTools, ...uniqueNewTools];
-    console.log(`🔧 Merged tools: ${existingTools.length} existing + ${uniqueNewTools.length} new = ${mergedTools.length} total`);
+    console.log(` Merged tools: ${existingTools.length} existing + ${uniqueNewTools.length} new = ${mergedTools.length} total`);
     
     return mergedTools;
   }
 
-// Fix for imports/api/mcp/mcpClientManager.ts - Replace the logAvailableTools method
-
 private logAvailableTools(): void {
-  console.log('\n🔧 Available Tools for Intelligent Selection:');
+  console.log('\n Available Tools for Intelligent Selection:');
   
   // Separate tools by actual source/type, not by pattern matching
   const epicTools = this.availableTools.filter(t => 
@@ -200,31 +196,31 @@ private logAvailableTools(): void {
   );
   
   if (aidboxTools.length > 0) {
-    console.log('🏥 Aidbox FHIR Tools:');
+    console.log(' Aidbox FHIR Tools:');
     aidboxTools.forEach(tool => console.log(`   • ${tool.name} - ${tool.description?.substring(0, 60)}...`));
   }
   
   if (epicTools.length > 0) {
-    console.log('🏥 Epic EHR Tools:');
+    console.log(' Epic EHR Tools:');
     epicTools.forEach(tool => console.log(`   • ${tool.name} - ${tool.description?.substring(0, 60)}...`));
   }
   
   if (documentTools.length > 0) {
-    console.log('📄 Document Tools:');
+    console.log(' Document Tools:');
     documentTools.forEach(tool => console.log(`   • ${tool.name} - ${tool.description?.substring(0, 60)}...`));
   }
   
   if (analysisTools.length > 0) {
-    console.log('🔍 Search & Analysis Tools:');
+    console.log(' Search & Analysis Tools:');
     analysisTools.forEach(tool => console.log(`   • ${tool.name} - ${tool.description?.substring(0, 60)}...`));
   }
   
   if (otherTools.length > 0) {
-    console.log('🔧 Other Tools:');
+    console.log(' Other Tools:');
     otherTools.forEach(tool => console.log(`   • ${tool.name} - ${tool.description?.substring(0, 60)}...`));
   }
   
-  console.log(`\n🧠 Claude will intelligently select from ${this.availableTools.length} total tools based on user queries`);
+  console.log(`\n Claude will intelligently select from ${this.availableTools.length} total tools based on user queries`);
   
   // Debug: Check for duplicates
   this.debugToolDuplicates();
@@ -274,7 +270,7 @@ private isAnalysisTool(tool: any): boolean {
       .filter(([name, count]) => count > 1);
     
     if (duplicates.length > 0) {
-      console.error('❌ DUPLICATE TOOL NAMES FOUND:');
+      console.error(' DUPLICATE TOOL NAMES FOUND:');
       duplicates.forEach(([name, count]) => {
         console.error(`  • ${name}: appears ${count} times`);
       });
@@ -392,12 +388,12 @@ private isAnalysisTool(tool: any): boolean {
           }
         });
       } else {
-        console.warn(`⚠️ Skipping duplicate tool in Anthropic format: ${tool.name}`);
+        console.warn(` Skipping duplicate tool in Anthropic format: ${tool.name}`);
       }
     });
     
     const toolsArray = Array.from(uniqueTools.values());
-    console.log(`🔧 Prepared ${toolsArray.length} unique tools for Anthropic (from ${this.availableTools.length} total)`);
+    console.log(` Prepared ${toolsArray.length} unique tools for Anthropic (from ${this.availableTools.length} total)`);
     
     return toolsArray;
   }
@@ -415,7 +411,7 @@ private isAnalysisTool(tool: any): boolean {
         nameSet.add(tool.name);
         validTools.push(tool);
       } else {
-        console.error(`❌ CRITICAL: Duplicate tool found in final validation: ${tool.name}`);
+        console.error(` CRITICAL: Duplicate tool found in final validation: ${tool.name}`);
       }
     });
     
@@ -423,16 +419,10 @@ private isAnalysisTool(tool: any): boolean {
       console.warn(`🧹 Removed ${tools.length - validTools.length} duplicate tools in final validation`);
     }
     
-    console.log(`✅ Final validation: ${validTools.length} unique tools ready for Anthropic`);
+    console.log(` Final validation: ${validTools.length} unique tools ready for Anthropic`);
     return validTools;
   }
 
-  // Route tool calls to appropriate MCP server
-// Fix for imports/api/mcp/mcpClientManager.ts
-// Replace the callMCPTool method with proper routing
-
-// Fixed callMCPTool method for imports/api/mcp/mcpClientManager.ts
-// Replace the existing callMCPTool method with this corrected version
 
 public async callMCPTool(toolName: string, args: any): Promise<any> {
   console.log(`🔧 Routing tool: ${toolName} with args:`, JSON.stringify(args, null, 2));
@@ -452,13 +442,13 @@ public async callMCPTool(toolName: string, args: any): Promise<any> {
       throw new Error('Epic MCP Server not connected - cannot call Epic tools');
     }
     
-    console.log(`🏥 Routing ${toolName} to Epic MCP Server (port 3003)`);
+    console.log(` Routing ${toolName} to Epic MCP Server (port 3003)`);
     try {
       const result = await this.epicConnection.callTool(toolName, args);
-      console.log(`✅ Epic tool ${toolName} completed successfully`);
+      console.log(` Epic tool ${toolName} completed successfully`);
       return result;
     } catch (error) {
-      console.error(`❌ Epic tool ${toolName} failed:`, error);
+      console.error(` Epic tool ${toolName} failed:`, error);
       throw new Error(`Epic tool ${toolName} failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
@@ -477,20 +467,17 @@ public async callMCPTool(toolName: string, args: any): Promise<any> {
       throw new Error('Aidbox MCP Server not connected - cannot call Aidbox tools');
     }
     
-    console.log(`🏥 Routing ${toolName} to Aidbox MCP Server (port 3002)`);
+    console.log(` Routing ${toolName} to Aidbox MCP Server (port 3002)`);
     try {
-      // FIXED: Pass the full tool name with 'aidbox' prefix to the server
-      // The server expects the full tool names like 'aidboxCreatePatient'
       const result = await this.aidboxConnection.callTool(toolName, args);
-      console.log(`✅ Aidbox tool ${toolName} completed successfully`);
+      console.log(` Aidbox tool ${toolName} completed successfully`);
       return result;
     } catch (error) {
-      console.error(`❌ Aidbox tool ${toolName} failed:`, error);
+      console.error(` Aidbox tool ${toolName} failed:`, error);
       throw new Error(`Aidbox tool ${toolName} failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
-  // Medical/Document tools - Go to Medical MCP Server (port 3001)
   const medicalToolNames = [
     // Document tools
     'uploadDocument', 'searchDocuments', 'listDocuments',
@@ -510,13 +497,13 @@ public async callMCPTool(toolName: string, args: any): Promise<any> {
       throw new Error('Medical MCP Server not connected - cannot call medical/document tools');
     }
     
-    console.log(`📋 Routing ${toolName} to Medical MCP Server (port 3001)`);
+    console.log(` Routing ${toolName} to Medical MCP Server (port 3001)`);
     try {
       const result = await this.medicalConnection.callTool(toolName, args);
-      console.log(`✅ Medical tool ${toolName} completed successfully`);
+      console.log(` Medical tool ${toolName} completed successfully`);
       return result;
     } catch (error) {
-      console.error(`❌ Medical tool ${toolName} failed:`, error);
+      console.error(` Medical tool ${toolName} failed:`, error);
       throw new Error(`Medical tool ${toolName} failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
@@ -528,9 +515,7 @@ public async callMCPTool(toolName: string, args: any): Promise<any> {
     throw new Error(`Tool '${toolName}' is not available. Available tools: ${availableToolNames}`);
   }
 
-  // If we get here, the tool exists but we don't know which server it belongs to
-  // This shouldn't happen with proper categorization
-  console.warn(`⚠️ Unknown tool routing for: ${toolName}. Defaulting to Medical server.`);
+  console.warn(` Unknown tool routing for: ${toolName}. Defaulting to Medical server.`);
   
   if (!this.medicalConnection) {
     throw new Error('Medical MCP Server not connected');
@@ -538,10 +523,10 @@ public async callMCPTool(toolName: string, args: any): Promise<any> {
   
   try {
     const result = await this.medicalConnection.callTool(toolName, args);
-    console.log(`✅ Tool ${toolName} completed successfully (default routing)`);
+    console.log(` Tool ${toolName} completed successfully (default routing)`);
     return result;
   } catch (error) {
-    console.error(`❌ Tool ${toolName} failed on default routing:`, error);
+    console.error(` Tool ${toolName} failed on default routing:`, error);
     throw new Error(`Tool ${toolName} failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
@@ -553,12 +538,12 @@ public async callMCPTool(toolName: string, args: any): Promise<any> {
     }
 
     try {
-      console.log(`🏥 Calling Epic tool: ${toolName}`, args);
+      console.log(` Calling Epic tool: ${toolName}`, args);
       const result = await this.epicConnection.callTool(toolName, args);
-      console.log(`✅ Epic tool ${toolName} completed successfully`);
+      console.log(` Epic tool ${toolName} completed successfully`);
       return result;
     } catch (error) {
-      console.error(`❌ Epic tool ${toolName} failed:`, error);
+      console.error(` Epic tool ${toolName} failed:`, error);
       throw error;
     }
   }
@@ -613,7 +598,7 @@ public async callMCPTool(toolName: string, args: any): Promise<any> {
       throw new Error('MCP Client not initialized');
     }
 
-    console.log(`🧠 Processing query with intelligent tool selection: "${query}"`);
+    console.log(` Processing query with intelligent tool selection: "${query}"`);
 
     try {
       if (this.config.provider === 'anthropic' && this.anthropic) {
@@ -716,7 +701,7 @@ Be intelligent about tool selection AND respect the user's specified data source
     const maxRetries = 3;
 
     while (iterations < maxIterations) {
-      console.log(`🔄 Iteration ${iterations + 1} - Asking Claude to decide on tools`);
+      console.log(` Iteration ${iterations + 1} - Asking Claude to decide on tools`);
       console.log(`🔧 Using ${tools.length} validated tools`);
       
       let retryCount = 0;
@@ -738,7 +723,7 @@ Be intelligent about tool selection AND respect the user's specified data source
           if (error.status === 529 && retryCount < maxRetries - 1) {
             retryCount++;
             const delay = Math.pow(2, retryCount) * 1000; // Exponential backoff
-            console.warn(`⚠️ Anthropic API overloaded, retrying in ${delay}ms (attempt ${retryCount}/${maxRetries})`);
+            console.warn(` Anthropic API overloaded, retrying in ${delay}ms (attempt ${retryCount}/${maxRetries})`);
             await new Promise(resolve => setTimeout(resolve, delay));
           } else {
             throw error; // Re-throw if not retryable or max retries reached
@@ -758,14 +743,14 @@ Be intelligent about tool selection AND respect the user's specified data source
         
         if (content.type === 'text') {
           finalResponse += content.text;
-          console.log(`💬 Claude says: ${content.text.substring(0, 100)}...`);
+          console.log(` Claude says: ${content.text.substring(0, 100)}...`);
         } else if (content.type === 'tool_use') {
           hasToolUse = true;
           console.log(`🔧 Claude chose tool: ${content.name} with args:`, content.input);
           
           try {
             const toolResult = await this.callMCPTool(content.name, content.input);
-            console.log(`✅ Tool ${content.name} executed successfully`);
+            console.log(` Tool ${content.name} executed successfully`);
             
             // Add tool result to conversation
             conversationHistory.push(
@@ -782,7 +767,7 @@ Be intelligent about tool selection AND respect the user's specified data source
             });
             
           } catch (error) {
-            console.error(`❌ Tool ${content.name} failed:`, error);
+            console.error(` Tool ${content.name} failed:`, error);
             
             conversationHistory.push(
               { role: 'assistant', content: assistantResponse }
@@ -799,7 +784,6 @@ Be intelligent about tool selection AND respect the user's specified data source
             });
           }
           
-          // Clear the current response since we're continuing the conversation
           finalResponse = '';
           break; // Process one tool at a time
         }
@@ -807,7 +791,7 @@ Be intelligent about tool selection AND respect the user's specified data source
 
       if (!hasToolUse) {
         // Claude didn't use any tools, so it's providing a final answer
-        console.log('✅ Claude provided final answer without additional tools');
+        console.log(' Claude provided final answer without additional tools');
         break;
       }
 
@@ -926,7 +910,7 @@ Based on this query, determine what tools (if any) you need to use and provide a
     }
 
     this.config.provider = provider;
-    console.log(`🔄 Switched to ${provider.toUpperCase()} provider with intelligent tool selection`);
+    console.log(` Switched to ${provider.toUpperCase()} provider with intelligent tool selection`);
   }
 
   public getCurrentProvider(): 'anthropic' | 'ozwell' | undefined {
