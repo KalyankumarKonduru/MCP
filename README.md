@@ -1,4 +1,31 @@
-**MERMAID DIAGRAM: -**
+# MCP Pilot - Intelligent Healthcare Chat Interface
+
+A sophisticated Model Context Protocol (MCP) client application built with Meteor.js and React that provides intelligent tool selection and orchestration across multiple healthcare data systems. This application serves as a unified interface for Epic EHR, Aidbox FHIR, MongoDB Atlas and medical document processing systems.
+
+## 🏥 Features
+
+- **Intelligent Tool Selection**: AI-powered selection from 25+ healthcare tools across multiple MCP servers
+- **Multi-Provider AI Support**: Anthropic Claude (native tool calling) and Ozwell Bluehive AI models  
+- **Healthcare System Integration**: Epic EHR, Aidbox FHIR, and medical document processing
+- **Session Management**: Persistent chat sessions with MongoDB storage and context tracking
+- **Document Upload & Processing**: Upload medical documents with OCR, NER, and semantic search
+- **Real-time Chat Interface**: Modern React-based chat UI with message streaming
+- **Provider Switching**: Switch between AI providers seamlessly during conversations
+- **Export/Import**: Export chat sessions and import them for sharing or backup
+- **Responsive Design**: Mobile-friendly interface with collapsible sidebar
+- **Theme Support**: Dark/light theme toggle with system preference detection
+
+## 🚀 Quick Start
+
+### Prerequisites
+
+- Node.js 18.0.0 or higher
+- MongoDB 4.4 or higher
+- Meteor.js 3.0 or higher
+- AI API keys (Anthropic Claude or Ozwell)
+- Running MCP servers (Medical, Aidbox, Epic)
+
+### MERMAID DIAGRAM: -
 ```mermaid
 graph TB
     subgraph "MCP Client Application (mcp-pilot-meteor)"
@@ -43,32 +70,6 @@ graph TB
     class MCPClient,Methods,Memory brain
     class LLM,MedServer service
 ```
-# MCP Pilot - Intelligent Healthcare Chat Interface
-
-A sophisticated Model Context Protocol (MCP) client application built with Meteor.js and React that provides intelligent tool selection and orchestration across multiple healthcare data systems. This application serves as a unified interface for Epic EHR, Aidbox FHIR, MongoDB Atlas and medical document processing systems.
-
-## 🏥 Features
-
-- **Intelligent Tool Selection**: AI-powered selection from 25+ healthcare tools across multiple MCP servers
-- **Multi-Provider AI Support**: Anthropic Claude (native tool calling) and Ozwell Bluehive AI models  
-- **Healthcare System Integration**: Epic EHR, Aidbox FHIR, and medical document processing
-- **Session Management**: Persistent chat sessions with MongoDB storage and context tracking
-- **Document Upload & Processing**: Upload medical documents with OCR, NER, and semantic search
-- **Real-time Chat Interface**: Modern React-based chat UI with message streaming
-- **Provider Switching**: Switch between AI providers seamlessly during conversations
-- **Export/Import**: Export chat sessions and import them for sharing or backup
-- **Responsive Design**: Mobile-friendly interface with collapsible sidebar
-- **Theme Support**: Dark/light theme toggle with system preference detection
-
-## 🚀 Quick Start
-
-### Prerequisites
-
-- Node.js 18.0.0 or higher
-- MongoDB 4.4 or higher
-- Meteor.js 3.0 or higher
-- AI API keys (Anthropic Claude or Ozwell)
-- Running MCP servers (Medical, Aidbox, Epic)
 
 ### Installation
 
