@@ -1935,3 +1935,58 @@ body {
   background: var(--accent);
   color: var(--accent-foreground);
 }
+/* MCP Tools Toggle positioning */
+.mcp-tools-toggle-wrapper {
+  position: absolute;
+  bottom: 8px;
+  right: 50px; /* Position to the left of send button */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Adjust the textarea padding to make room for all buttons */
+.chat-textarea {
+  padding-right: 120px; /* Increased to accommodate all three buttons */
+}
+
+/* Ensure the MCP tools button has proper styling */
+.mcp-tools-toggle-wrapper button {
+  padding: 6px;
+  height: 32px;
+  width: 32px;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted-foreground);
+  border: none;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.mcp-tools-toggle-wrapper button:hover:not(:disabled) {
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.mcp-tools-toggle-wrapper button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Dark mode adjustments */
+.dark .mcp-tools-toggle-wrapper button {
+  color: var(--muted-foreground);
+}
+
+.dark .mcp-tools-toggle-wrapper button:hover:not(:disabled) {
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+
+/* Adjust upload button position to be further left */
+.upload-button-inline {
+  right: 90px; /* Move left to make room for MCP tools button */
+}

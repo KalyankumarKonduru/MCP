@@ -5,6 +5,8 @@ import { Button } from "../ui/Button";
 import { ArrowUp } from 'lucide-react';
 import { ArrowUpIcon } from "./Icons";
 import { Upload, Paperclip } from 'lucide-react';
+import MCPToolsToggle from './MCPToolsToggle';
+
 
 interface ChatInputProps {
   onSubmit: (text: string) => void;
@@ -99,6 +101,9 @@ const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
         >
           <Paperclip className="h-4 w-4" />
         </Button>
+        <div style={{ position: 'absolute', bottom: '8px', right: '50px' }}>
+          <MCPToolsToggle />
+        </div>
 
         {/* Send button with guaranteed visible arrow */}
         <Button
