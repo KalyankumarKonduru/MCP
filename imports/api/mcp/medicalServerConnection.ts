@@ -23,7 +23,7 @@ export class MedicalServerConnection {
   private isInitialized = false;
   private requestId = 1;
 
-  constructor(baseUrl: string = 'http://localhost:3001') {
+  constructor(baseUrl: string = 'http://localhost:3005') {
     this.baseUrl = baseUrl.replace(/\/$/, ''); // Remove trailing slash
   }
 
@@ -54,7 +54,7 @@ export class MedicalServerConnection {
       console.log(' MCP Initialize result:', initResult);
 
       // Send initialized notification
-      await this.sendNotification('initialized', {});
+      await this.sendNotification('notifications/initialized', {});
 
       // Test by listing tools
       const toolsResult = await this.sendRequest('tools/list', {});
@@ -239,37 +239,44 @@ export class MedicalServerConnection {
     });
   }
 
-  private async sendNotification(method: string, params: any): Promise<void> {
-    const notification = {
-      jsonrpc: '2.0',
-      method,
-      params
+private async sendNotification(method: string, params: any): Promise<void> {
+  const notification = {
+    jsonrpc: '2.0',
+    method,
+    params
+  };
+
+  try {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json, text/event-stream',
     };
 
-    try {
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json, text/event-stream',
-      };
-
-      if (this.sessionId) {
-        headers['mcp-session-id'] = this.sessionId;
-      }
-
-      const response = await fetch(`${this.baseUrl}/mcp`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(notification),
-        signal: AbortSignal.timeout(10000)
-      });
-
-      if (!response.ok) {
-        console.warn(`Notification ${method} failed: ${response.status}`);
-      }
-    } catch (error) {
-      console.warn(`Notification ${method} failed:`, error);
+    if (this.sessionId) {
+      headers['mcp-session-id'] = this.sessionId;
     }
+
+    console.log(` Sending notification: ${method}`, { sessionId: this.sessionId });
+
+    const response = await fetch(`${this.baseUrl}/mcp`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(notification),
+      signal: AbortSignal.timeout(10000)
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Notification ${method} failed: ${response.status} - ${errorText}`);
+      throw new Error(`Notification ${method} failed: ${response.status} - ${errorText}`);
+    } else {
+      console.log(` Notification ${method} sent successfully`);
+    }
+  } catch (error) {
+    console.error(`Notification ${method} failed:`, error);
+    throw error; // Re-throw to stop initialization if notification fails
   }
+}
 
   async listTools(): Promise<any> {
     if (!this.isInitialized) {

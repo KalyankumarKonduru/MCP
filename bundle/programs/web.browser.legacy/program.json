@@ -2,34 +2,34 @@
   "format": "web-program-pre1",
   "manifest": [
     {
-      "path": "10968f8d82efd5a42c83f9677d9f6ac720e000cf.js",
+      "path": "7aff628fdaaf448607f8f7a774d6897081c1f6c5.js",
       "where": "client",
       "type": "js",
       "cacheable": true,
-      "url": "/10968f8d82efd5a42c83f9677d9f6ac720e000cf.js?meteor_js_resource=true",
-      "size": 1189730,
-      "hash": "10968f8d82efd5a42c83f9677d9f6ac720e000cf",
-      "sri": "GN9Prkc47+EzTd/C5ZHUJfYHQTw+AcBBx0wPi63KSVPxM/nr9H+SBawJ8yysCPh7aFy87tHirHyKYpIBXyVHfw=="
+      "url": "/7aff628fdaaf448607f8f7a774d6897081c1f6c5.js?meteor_js_resource=true",
+      "size": 1196777,
+      "hash": "7aff628fdaaf448607f8f7a774d6897081c1f6c5",
+      "sri": "PRcx4Fs8/xqwvX6d2IdrUAvc4opE9scQWrrW/LL8iteJdX670lXX6NpkiZaY2pe6LrRbce/jI9gbXsVaFJ4Dpg=="
     },
     {
-      "path": "10968f8d82efd5a42c83f9677d9f6ac720e000cf.stats.json",
+      "path": "7aff628fdaaf448607f8f7a774d6897081c1f6c5.stats.json",
       "where": "client",
       "type": "json",
       "cacheable": true,
-      "url": "/10968f8d82efd5a42c83f9677d9f6ac720e000cf.stats.json?meteor_js_resource=true",
-      "size": 31931,
-      "hash": "920a13f7210e095fa27c07cf8e344d2d80520acd",
-      "sri": "VPkDxFN3kciFz0/zlYCdYDVt0zaxzNH25yQP4rfqG8rKO8GqpXIS4s+SepgsBVHhvbv0tWO2Osojm4JBaQouaw=="
+      "url": "/7aff628fdaaf448607f8f7a774d6897081c1f6c5.stats.json?meteor_js_resource=true",
+      "size": 31973,
+      "hash": "4784752290e1767dae747a1cc3d0e7bcbb671102",
+      "sri": "AwpdHyPzwQ+TMEmgxo974ePQ2LRz7nr2ua/FF+uqs0qIcaQcaFnGUHtYcN1KsaxAs8oly8cFVYtOCri4D4ZY+w=="
     },
     {
-      "path": "f791e1e0f90be6df89b9e40c408ce477a998fe38.css",
+      "path": "0511c8ebf406638c42857e57830c3f18d7e39a03.css",
       "where": "client",
       "type": "css",
       "cacheable": true,
-      "url": "/f791e1e0f90be6df89b9e40c408ce477a998fe38.css?meteor_css_resource=true",
-      "size": 21889,
-      "hash": "f791e1e0f90be6df89b9e40c408ce477a998fe38",
-      "sri": "6E0MhfJCctbBsW3WyoGRVWl6m+XUvqW9cpQIiuUG5EklTXT3Zo9Fzt3Pjakje8410612tWvpMLxnyL4L7ODeYA=="
+      "url": "/0511c8ebf406638c42857e57830c3f18d7e39a03.css?meteor_css_resource=true",
+      "size": 22691,
+      "hash": "0511c8ebf406638c42857e57830c3f18d7e39a03",
+      "sri": "WBHnQZSnqE39j6FJ+M/cWjRYeGxMH6G/RtTIT3iNs1fREso759JPFzwQnadKpXtW0V70Wg0h5ywEeQ97flko1w=="
     },
     {
       "path": "packages/promise/promise.d.ts",

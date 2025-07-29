@@ -65,7 +65,7 @@ export class MCPClientManager {
       const settings = (global as any).Meteor?.settings?.private;
       const mcpServerUrl = settings?.MEDICAL_MCP_SERVER_URL || 
                            process.env.MEDICAL_MCP_SERVER_URL || 
-                           'http://localhost:3001';
+                           'http://localhost:3005';
       
       console.log(` Connecting to Medical MCP Server at: ${mcpServerUrl}`);
       
@@ -579,7 +579,7 @@ public async callMCPTool(toolName: string, args: any): Promise<any> {
     // Check Medical server
     if (this.medicalConnection) {
       try {
-        const medicalHealth = await fetch('http://localhost:3001/health');
+        const medicalHealth = await fetch('http://localhost:3005/health');
         health.medical = medicalHealth.ok;
       } catch (error) {
         console.warn('Medical health check failed:', error);

@@ -3,8 +3,8 @@
     "name": "standard-minifier-js",
     "version": "3.1.0"
   },
-  "totalMinifiedBytes": 1571787,
-  "totalMinifiedGzipBytes": 299932,
+  "totalMinifiedBytes": 1578128,
+  "totalMinifiedGzipBytes": 301440,
   "minifiedBytesByPackage": {
     "packages/core-runtime.js": 1921,
     "packages/meteor.js": 11918,
@@ -2180,7 +2180,7 @@
       {}
     ],
     "app/app.js": [
-      26158,
+      32499,
       {
         "imports": {
           "lib": {
@@ -2209,8 +2209,9 @@
           "components": {
             "custom": {
               "Actions.tsx": 1173,
-              "ChatInput.tsx": 2241,
+              "ChatInput.tsx": 2393,
               "Icons.tsx": 1599,
+              "MCPToolsToggle.tsx": 6167,
               "Markdown.tsx": 1366,
               "Message.tsx": 1545,
               "Overview.tsx": 6225
