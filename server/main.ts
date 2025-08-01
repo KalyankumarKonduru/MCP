@@ -69,7 +69,7 @@ Meteor.startup(async () => {
     // Connect to medical MCP server for document tools
     const mcpServerUrl = settings?.MEDICAL_MCP_SERVER_URL || 
                         process.env.MEDICAL_MCP_SERVER_URL || 
-                        'http://localhost:3001';
+                        'http://localhost:3005';
     
     if (mcpServerUrl && mcpServerUrl !== 'DISABLED') {
       try {
