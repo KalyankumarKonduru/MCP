@@ -1,4 +1,3 @@
-// client/components/dashboard/MedicationInteractionPanel.tsx
 import React, { useState, useEffect } from 'react';
 import { Meteor } from 'meteor/meteor';
 import { 
@@ -15,14 +14,36 @@ import {
 import { cn } from '/imports/lib/utils';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card';
 import { Button } from '../ui/Button';
-import { Badge } from '../ui/Badge';
+
+// Simple Badge component if not available
+const Badge: React.FC<{
+  children: React.ReactNode;
+  variant?: 'default' | 'destructive' | 'outline' | 'secondary';
+  className?: string;
+}> = ({ children, variant = 'default', className }) => {
+  const baseClasses = 'inline-flex items-center px-2 py-1 text-xs font-medium rounded-md';
+  const variantClasses = {
+    default: 'bg-gray-100 text-gray-800',
+    destructive: 'bg-red-100 text-red-800',
+    outline: 'border border-gray-300 bg-white text-gray-700',
+    secondary: 'bg-blue-100 text-blue-800'
+  };
+  
+  return (
+    <span className={cn(baseClasses, variantClasses[variant], className)}>
+      {children}
+    </span>
+  );
+};
 
 interface MedicationInteractionPanelProps {
-  patientId: string;
+  patientId?: string; // Made optional
   medications?: string[];
   compact?: boolean;
   className?: string;
 }
+
+// ... rest of interfaces remain the same ...
 
 interface DrugInteraction {
   id: string;
@@ -101,62 +122,58 @@ export const MedicationInteractionPanel: React.FC<MedicationInteractionPanelProp
   const [interactions, setInteractions] = useState<DrugInteraction[]>([]);
   const [alerts, setAlerts] = useState<MedicationAlert[]>([]);
   const [expandedInteraction, setExpandedInteraction] = useState<string | null>(null);
-  const [currentMedications, setCurrentMedications] = useState<string[]>(medications);
+  const [lastChecked, setLastChecked] = useState<Date>(new Date());
 
   useEffect(() => {
-    loadMedicationData();
+    if (patientId) {
+      loadInteractionData();
+    } else {
+      // Handle case when no patient is selected
+      setIsLoading(false);
+      setInteractions([]);
+      setAlerts([]);
+    }
   }, [patientId, medications]);
 
-  const loadMedicationData = async () => {
+  const loadInteractionData = async () => {
+    if (!patientId) return;
+    
     setIsLoading(true);
     setError(null);
     
     try {
-      // Get current medications if not provided
-      if (medications.length === 0) {
-        const patientResponse = await Meteor.callAsync('mcp.callTool', {
-          name: 'analyzePatientHistory',
-          arguments: { 
-            patientId,
-            analysisType: 'current_medications'
-          }
-        });
-        
-        if (patientResponse?.content?.medications) {
-          setCurrentMedications(patientResponse.content.medications);
-        }
-      } else {
-        setCurrentMedications(medications);
-      }
-
-      // Check for drug interactions
+      // Call MCP tools to get medication interaction data
       const interactionResponse = await Meteor.callAsync('mcp.callTool', {
-        name: 'checkDrugInteractions',
+        name: 'checkMedicationInteractions',
         arguments: { 
           patientId,
-          medications: currentMedications
+          medications: medications.length > 0 ? medications : undefined
         }
       });
 
-      if (interactionResponse?.content?.interactions) {
-        setInteractions(interactionResponse.content.interactions);
-      }
-
-      // Get medication alerts
-      const alertResponse = await Meteor.callAsync('mcp.callTool', {
-        name: 'getMedicationAlerts',
-        arguments: { 
-          patientId,
-          medications: currentMedications
+      // Handle different response structures
+      if (interactionResponse && typeof interactionResponse === 'object') {
+        let data;
+        
+        // If response has content array
+        if ((interactionResponse as any).content?.[0]?.text) {
+          data = JSON.parse((interactionResponse as any).content[0].text);
         }
-      });
-
-      if (alertResponse?.content?.alerts) {
-        setAlerts(alertResponse.content.alerts);
+        // If response has direct content
+        else if ((interactionResponse as any).content) {
+          data = (interactionResponse as any).content;
+        }
+        // If response is the data directly
+        else {
+          data = interactionResponse;
+        }
+        
+        setInteractions(data.interactions || []);
+        setAlerts(data.alerts || []);
+        setLastChecked(new Date());
       }
-
-    } catch (err) {
-      console.error('Error loading medication data:', err);
+    } catch (error) {
+      console.error('Failed to load medication interactions:', error);
       setError('Failed to load medication interaction data');
     } finally {
       setIsLoading(false);
@@ -164,31 +181,52 @@ export const MedicationInteractionPanel: React.FC<MedicationInteractionPanelProp
   };
 
   const handleRefresh = () => {
-    loadMedicationData();
+    loadInteractionData();
   };
 
-  const toggleInteractionExpanded = (interactionId: string) => {
-    setExpandedInteraction(expandedInteraction === interactionId ? null : interactionId);
+  const toggleInteractionExpansion = (interactionId: string) => {
+    setExpandedInteraction(
+      expandedInteraction === interactionId ? null : interactionId
+    );
   };
 
-  const sortedInteractions = interactions.sort((a, b) => {
-    const severityA = SEVERITY_CONFIG[a.severity].priority;
-    const severityB = SEVERITY_CONFIG[b.severity].priority;
-    return severityB - severityA;
-  });
+  const getSeverityIcon = (severity: keyof typeof SEVERITY_CONFIG) => {
+    const IconComponent = SEVERITY_CONFIG[severity].icon;
+    return <IconComponent className="h-4 w-4" />;
+  };
 
-  const sortedAlerts = alerts.sort((a, b) => {
-    if (a.urgent !== b.urgent) return a.urgent ? -1 : 1;
-    const severityOrder = { critical: 4, high: 3, moderate: 2, low: 1 };
-    return severityOrder[b.severity] - severityOrder[a.severity];
-  });
+  const getAlertIcon = (severity: keyof typeof ALERT_SEVERITY_CONFIG) => {
+    const IconComponent = ALERT_SEVERITY_CONFIG[severity].icon;
+    return <IconComponent className="h-4 w-4" />;
+  };
+
+  if (!patientId) {
+    return (
+      <Card className={cn("h-full", className)}>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Pill className="h-4 w-4" />
+            Medication Interactions
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-center py-8 text-muted-foreground">
+            <div className="text-center">
+              <Pill className="h-8 w-8 mx-auto mb-2 opacity-50" />
+              <p>No patient selected</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (isLoading) {
     return (
       <Card className={cn("h-full", className)}>
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Pill className="h-5 w-5 text-orange-500" />
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Pill className="h-4 w-4" />
             Medication Interactions
           </CardTitle>
         </CardHeader>
@@ -207,202 +245,271 @@ export const MedicationInteractionPanel: React.FC<MedicationInteractionPanelProp
   if (error) {
     return (
       <Card className={cn("h-full", className)}>
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Pill className="h-5 w-5 text-orange-500" />
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Pill className="h-4 w-4" />
             Medication Interactions
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col items-center justify-center py-8 text-center">
-            <AlertCircle className="h-8 w-8 text-red-500 mb-2" />
-            <p className="text-sm text-muted-foreground mb-4">{error}</p>
-            <Button variant="outline" size="sm" onClick={handleRefresh}>
-              <RefreshCw className="h-4 w-4 mr-1" />
-              Retry
-            </Button>
+          <div className="flex items-center justify-center py-8">
+            <div className="text-center text-muted-foreground">
+              <AlertTriangle className="h-8 w-8 mx-auto mb-2 text-destructive" />
+              <p>{error}</p>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleRefresh}
+                className="mt-2"
+              >
+                Try Again
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
     );
   }
 
+  const criticalAlerts = alerts.filter(alert => alert.severity === 'critical');
+  const highSeverityInteractions = interactions.filter(
+    interaction => interaction.severity === 'major' || interaction.severity === 'contraindicated'
+  );
+
   return (
     <Card className={cn("h-full flex flex-col", className)}>
-      <CardHeader className="pb-3">
+      <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Pill className="h-5 w-5 text-orange-500" />
-            Medication Safety
+          <CardTitle className="text-base flex items-center gap-2">
+            <Pill className="h-4 w-4" />
+            Medication Interactions
+            {(criticalAlerts.length > 0 || highSeverityInteractions.length > 0) && (
+              <Badge variant="destructive" className="ml-2">
+                {criticalAlerts.length + highSeverityInteractions.length}
+              </Badge>
+            )}
           </CardTitle>
-          <Button variant="ghost" size="sm" onClick={handleRefresh}>
-            <RefreshCw className="h-4 w-4" />
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={handleRefresh}
+            className="h-8 w-8 p-0"
+          >
+            <RefreshCw className="h-3 w-3" />
           </Button>
-        </div>
-        
-        {/* Summary Statistics */}
-        <div className="flex gap-2 mt-2">
-          <Badge variant="secondary" className="text-xs">
-            {currentMedications.length} Medications
-          </Badge>
-          <Badge 
-            variant={interactions.length > 0 ? "destructive" : "secondary"} 
-            className="text-xs"
-          >
-            {interactions.length} Interactions
-          </Badge>
-          <Badge 
-            variant={sortedAlerts.some(a => a.urgent) ? "destructive" : "secondary"} 
-            className="text-xs"
-          >
-            {alerts.length} Alerts
-          </Badge>
         </div>
       </CardHeader>
 
-      <CardContent className="flex-1 overflow-auto space-y-4">
-        {/* Critical Alerts Section */}
-        {sortedAlerts.length > 0 && (
-          <div className="space-y-2">
-            <h4 className="text-sm font-medium text-muted-foreground">Active Alerts</h4>
-            {sortedAlerts.slice(0, compact ? 3 : 10).map((alert) => {
-              const config = ALERT_SEVERITY_CONFIG[alert.severity];
-              const Icon = config.icon;
-              
-              return (
-                <div
-                  key={alert.id}
-                  className={cn(
-                    "p-3 rounded-lg border",
-                    config.color,
-                    alert.urgent && "ring-2 ring-red-500"
-                  )}
-                >
-                  <div className="flex items-start gap-2">
-                    <Icon className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <p className="font-medium text-sm">{alert.title}</p>
-                        {alert.urgent && (
-                          <Badge variant="destructive" className="text-xs">
-                            URGENT
-                          </Badge>
-                        )}
-                      </div>
-                      <p className="text-xs opacity-90 mb-2">{alert.description}</p>
-                      <p className="text-xs font-medium">
-                        Recommendation: {alert.recommendation}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* Drug Interactions Section */}
-        {sortedInteractions.length > 0 && (
-          <div className="space-y-2">
-            <h4 className="text-sm font-medium text-muted-foreground">Drug Interactions</h4>
-            {sortedInteractions.slice(0, compact ? 3 : 10).map((interaction) => {
-              const config = SEVERITY_CONFIG[interaction.severity];
-              const Icon = config.icon;
-              const isExpanded = expandedInteraction === interaction.id;
-              
-              return (
-                <div
-                  key={interaction.id}
-                  className={cn("border rounded-lg", config.color)}
-                >
-                  <div 
-                    className="p-3 cursor-pointer"
-                    onClick={() => toggleInteractionExpanded(interaction.id)}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Icon className="h-4 w-4 flex-shrink-0" />
-                        <div className="min-w-0">
-                          <p className="font-medium text-sm">
-                            {interaction.drug1} + {interaction.drug2}
-                          </p>
-                          <p className="text-xs opacity-90">
-                            {interaction.severity.toUpperCase()} - {interaction.clinicalEffect}
-                          </p>
-                        </div>
-                      </div>
-                      {isExpanded ? (
-                        <ChevronDown className="h-4 w-4" />
-                      ) : (
-                        <ChevronRight className="h-4 w-4" />
-                      )}
-                    </div>
-                  </div>
-                  
-                  {isExpanded && (
-                    <div className="px-3 pb-3 space-y-2 border-t border-current/20">
-                      <div>
-                        <p className="text-xs font-medium mb-1">Description:</p>
-                        <p className="text-xs opacity-90">{interaction.description}</p>
-                      </div>
-                      
-                      <div>
-                        <p className="text-xs font-medium mb-1">Mechanism:</p>
-                        <p className="text-xs opacity-90">{interaction.mechanism}</p>
-                      </div>
-                      
-                      <div>
-                        <p className="text-xs font-medium mb-1">Management:</p>
-                        <p className="text-xs opacity-90">{interaction.management}</p>
-                      </div>
-                      
-                      <div className="flex items-center justify-between pt-1">
-                        <Badge variant="outline" className="text-xs">
-                          Evidence: {interaction.evidence}
-                        </Badge>
-                        <Button variant="ghost" size="sm" className="h-6 px-2 text-xs">
-                          <ExternalLink className="h-3 w-3 mr-1" />
-                          Details
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* Current Medications List */}
-        {currentMedications.length > 0 && (
-          <div className="space-y-2">
-            <h4 className="text-sm font-medium text-muted-foreground">Current Medications</h4>
-            <div className="flex flex-wrap gap-1">
-              {currentMedications.slice(0, compact ? 6 : 20).map((med, index) => (
-                <Badge key={index} variant="outline" className="text-xs">
-                  {med}
-                </Badge>
-              ))}
-              {currentMedications.length > (compact ? 6 : 20) && (
-                <Badge variant="outline" className="text-xs">
-                  +{currentMedications.length - (compact ? 6 : 20)} more
-                </Badge>
-              )}
+      <CardContent className="flex-1 overflow-y-auto">
+        {alerts.length === 0 && interactions.length === 0 ? (
+          <div className="flex items-center justify-center py-8 text-muted-foreground">
+            <div className="text-center">
+              <Shield className="h-8 w-8 mx-auto mb-2 text-green-500" />
+              <p>No interactions detected</p>
+              <p className="text-xs mt-1">
+                Last checked: {lastChecked.toLocaleTimeString()}
+              </p>
             </div>
           </div>
-        )}
+        ) : (
+          <div className="space-y-4">
+            {/* Critical Alerts */}
+            {criticalAlerts.length > 0 && (
+              <div>
+                <h4 className="text-sm font-medium text-destructive mb-2">
+                  Critical Alerts
+                </h4>
+                <div className="space-y-2">
+                  {criticalAlerts.map((alert) => (
+                    <div
+                      key={alert.id}
+                      className="p-3 border border-red-200 bg-red-50 rounded-lg"
+                    >
+                      <div className="flex items-start gap-2">
+                        {getAlertIcon(alert.severity)}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <p className="font-medium text-sm text-red-800">
+                              {alert.title}
+                            </p>
+                            {alert.urgent && (
+                              <Badge variant="destructive" className="text-xs">
+                                URGENT
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-xs text-red-700 mb-2">
+                            {alert.description}
+                          </p>
+                          <div className="bg-red-100 p-2 rounded text-xs text-red-800">
+                            <strong>Recommendation:</strong> {alert.recommendation}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
-        {/* Empty State */}
-        {interactions.length === 0 && alerts.length === 0 && currentMedications.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-8 text-center">
-            <Shield className="h-12 w-12 text-green-500 mb-3" />
-            <h3 className="font-medium text-sm mb-1">No Interactions Found</h3>
-            <p className="text-xs text-muted-foreground">
-              No medication interactions or alerts detected
-            </p>
+            {/* Drug Interactions */}
+            {interactions.length > 0 && (
+              <div>
+                <h4 className="text-sm font-medium mb-2">
+                  Drug Interactions ({interactions.length})
+                </h4>
+                <div className="space-y-2">
+                  {interactions
+                    .sort((a, b) => SEVERITY_CONFIG[b.severity].priority - SEVERITY_CONFIG[a.severity].priority)
+                    .map((interaction) => (
+                      <div
+                        key={interaction.id}
+                        className={cn(
+                          "border rounded-lg overflow-hidden",
+                          SEVERITY_CONFIG[interaction.severity].color.includes('red') && "border-red-200",
+                          SEVERITY_CONFIG[interaction.severity].color.includes('orange') && "border-orange-200",
+                          SEVERITY_CONFIG[interaction.severity].color.includes('yellow') && "border-yellow-200",
+                          SEVERITY_CONFIG[interaction.severity].color.includes('blue') && "border-blue-200"
+                        )}
+                      >
+                        <button
+                          onClick={() => toggleInteractionExpansion(interaction.id)}
+                          className="w-full p-3 text-left hover:bg-gray-50 transition-colors"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                              {getSeverityIcon(interaction.severity)}
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium text-sm truncate">
+                                  {interaction.drug1} + {interaction.drug2}
+                                </p>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <Badge 
+                                    variant="secondary" 
+                                    className={cn("text-xs", SEVERITY_CONFIG[interaction.severity].color)}
+                                  >
+                                    {interaction.severity}
+                                  </Badge>
+                                  <span className="text-xs text-muted-foreground truncate">
+                                    {interaction.description}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                            {expandedInteraction === interaction.id ? (
+                              <ChevronDown className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                            ) : (
+                              <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                            )}
+                          </div>
+                        </button>
+
+                        {expandedInteraction === interaction.id && (
+                          <div className="px-3 pb-3 border-t bg-gray-50/50">
+                            <div className="space-y-3 pt-3">
+                              <div>
+                                <h5 className="text-xs font-medium text-gray-700 mb-1">
+                                  Clinical Effect
+                                </h5>
+                                <p className="text-xs text-gray-600">
+                                  {interaction.clinicalEffect}
+                                </p>
+                              </div>
+
+                              <div>
+                                <h5 className="text-xs font-medium text-gray-700 mb-1">
+                                  Mechanism
+                                </h5>
+                                <p className="text-xs text-gray-600">
+                                  {interaction.mechanism}
+                                </p>
+                              </div>
+
+                              <div>
+                                <h5 className="text-xs font-medium text-gray-700 mb-1">
+                                  Management
+                                </h5>
+                                <p className="text-xs text-gray-600">
+                                  {interaction.management}
+                                </p>
+                              </div>
+
+                              <div className="flex items-center justify-between pt-2 border-t">
+                                <div className="flex items-center gap-2">
+                                  <Badge variant="outline" className="text-xs">
+                                    {interaction.evidence}
+                                  </Badge>
+                                  <span className="text-xs text-muted-foreground">
+                                    evidence
+                                  </span>
+                                </div>
+                                <Button variant="ghost" size="sm" className="h-6 text-xs">
+                                  <ExternalLink className="h-3 w-3 mr-1" />
+                                  Learn More
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                </div>
+              </div>
+            )}
+
+            {/* Other Alerts */}
+            {alerts.filter(alert => alert.severity !== 'critical').length > 0 && (
+              <div>
+                <h4 className="text-sm font-medium mb-2">
+                  Other Alerts
+                </h4>
+                <div className="space-y-2">
+                  {alerts
+                    .filter(alert => alert.severity !== 'critical')
+                    .map((alert) => (
+                      <div
+                        key={alert.id}
+                        className={cn(
+                          "p-3 border rounded-lg",
+                          ALERT_SEVERITY_CONFIG[alert.severity].color.includes('yellow') && "border-yellow-200 bg-yellow-50",
+                          ALERT_SEVERITY_CONFIG[alert.severity].color.includes('orange') && "border-orange-200 bg-orange-50",
+                          ALERT_SEVERITY_CONFIG[alert.severity].color.includes('blue') && "border-blue-200 bg-blue-50"
+                        )}
+                      >
+                        <div className="flex items-start gap-2">
+                          {getAlertIcon(alert.severity)}
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-sm mb-1">
+                              {alert.title}
+                            </p>
+                            <p className="text-xs text-muted-foreground mb-2">
+                              {alert.description}
+                            </p>
+                            {alert.recommendation && (
+                              <div className="bg-white/50 p-2 rounded text-xs">
+                                <strong>Recommendation:</strong> {alert.recommendation}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </CardContent>
+
+      {!compact && (
+        <div className="px-4 py-2 border-t bg-muted/50">
+          <p className="text-xs text-muted-foreground">
+            Last checked: {lastChecked.toLocaleTimeString()}
+          </p>
+        </div>
+      )}
     </Card>
   );
 };
+
+export default MedicationInteractionPanel;

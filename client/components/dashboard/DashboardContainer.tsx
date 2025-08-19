@@ -1,4 +1,3 @@
-// client/components/dashboard/DashboardContainer.tsx
 import React, { useState, useEffect } from 'react';
 import { Meteor } from 'meteor/meteor';
 import { useTracker } from 'meteor/react-meteor-data';
@@ -71,9 +70,21 @@ export const DashboardContainer: React.FC<DashboardContainerProps> = ({
         arguments: { patientId }
       });
 
-      if (metricsResponse?.content?.[0]?.text) {
-        const metrics = JSON.parse(metricsResponse.content[0].text);
-        setDashboardMetrics(metrics);
+      // Handle different response structures
+      if (metricsResponse && typeof metricsResponse === 'object') {
+        // If response has content array
+        if ((metricsResponse as any).content?.[0]?.text) {
+          const metrics = JSON.parse((metricsResponse as any).content[0].text);
+          setDashboardMetrics(metrics);
+        }
+        // If response has direct content
+        else if ((metricsResponse as any).content) {
+          setDashboardMetrics((metricsResponse as any).content);
+        }
+        // If response is the data directly
+        else if ((metricsResponse as any).totalPatients !== undefined) {
+          setDashboardMetrics(metricsResponse as any);
+        }
       }
     } catch (error) {
       console.error('Failed to load dashboard data:', error);
@@ -105,27 +116,33 @@ export const DashboardContainer: React.FC<DashboardContainerProps> = ({
               <MetricsCard
                 title="Total Patients"
                 value={dashboardMetrics.totalPatients}
-                icon={Users}
-                trend={{ value: 12, direction: 'up', period: 'vs last month' }}
+                icon={<Users className="h-4 w-4" />}
+                trend="up"
+                change={12}
+                trendPeriod="vs last month"
               />
               <MetricsCard
                 title="Active Alerts"
                 value={dashboardMetrics.activeAlerts}
-                icon={AlertTriangle}
-                trend={{ value: 8, direction: 'down', period: 'vs last week' }}
-                variant={dashboardMetrics.activeAlerts > 5 ? 'warning' : 'default'}
+                icon={<AlertTriangle className="h-4 w-4" />}
+                trend="down"
+                change={-8}
+                trendPeriod="vs last week"
+                status={dashboardMetrics.activeAlerts > 5 ? 'warning' : 'good'}
               />
               <MetricsCard
                 title="Avg Risk Score"
                 value={`${dashboardMetrics.riskScore}%`}
-                icon={Activity}
-                trend={{ value: 3, direction: 'up', period: 'vs last month' }}
+                icon={<Activity className="h-4 w-4" />}
+                trend="up"
+                change={3}
+                trendPeriod="vs last month"
               />
               <MetricsCard
                 title="System Status"
                 value={dashboardMetrics.systemStatus}
-                icon={TrendingUp}
-                variant={dashboardMetrics.systemStatus === 'healthy' ? 'success' : 'warning'}
+                icon={<TrendingUp className="h-4 w-4" />}
+                status={dashboardMetrics.systemStatus === 'healthy' ? 'good' : 'warning'}
               />
             </div>
 
@@ -138,11 +155,11 @@ export const DashboardContainer: React.FC<DashboardContainerProps> = ({
                 />
               )}
               <MedicationInteractionPanel 
-                patientId={patientId}
+                patientId={patientId || ''}
                 compact={!isExpanded}
               />
               <TemporalTrendsPanel 
-                patientId={patientId}
+                patientId={patientId || ''}
                 compact={!isExpanded}
               />
               <PopulationHealthPanel 
@@ -156,17 +173,20 @@ export const DashboardContainer: React.FC<DashboardContainerProps> = ({
         return patientId ? (
           <div className="space-y-6">
             <PatientRiskPanel patientId={patientId} />
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <MedicationInteractionPanel patientId={patientId} />
-              <TemporalTrendsPanel patientId={patientId} />
-            </div>
+            <MedicationInteractionPanel patientId={patientId} />
+            <TemporalTrendsPanel patientId={patientId} />
           </div>
         ) : (
-          <div className="flex items-center justify-center h-64 text-muted-foreground">
-            <div className="text-center">
-              <Activity className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>Select a patient to view detailed analytics</p>
-            </div>
+          <div className="flex items-center justify-center p-8">
+            <Card>
+              <CardContent className="p-6 text-center">
+                <Activity className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="font-semibold text-lg mb-2">No Patient Selected</h3>
+                <p className="text-muted-foreground">
+                  Please select a patient to view individual analytics.
+                </p>
+              </CardContent>
+            </Card>
           </div>
         );
 
@@ -174,34 +194,6 @@ export const DashboardContainer: React.FC<DashboardContainerProps> = ({
         return (
           <div className="space-y-6">
             <PopulationHealthPanel />
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Users className="h-5 w-5" />
-                    Cohort Analysis
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground">
-                    Population-wide medication effectiveness and outcomes analysis.
-                  </p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <TrendingUp className="h-5 w-5" />
-                    Health Trends
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground">
-                    Disease prevalence and treatment outcome trends over time.
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
           </div>
         );
 
