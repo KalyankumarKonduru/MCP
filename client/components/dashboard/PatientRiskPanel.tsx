@@ -1,4 +1,3 @@
-// client/components/dashboard/PatientRiskPanel.tsx
 import React, { useState, useEffect } from 'react';
 import { Meteor } from 'meteor/meteor';
 import { 
@@ -25,6 +24,7 @@ import {
 import { cn } from '/imports/lib/utils';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card';
 import { Button } from '../ui/Button';
+import { Badge } from '../ui/Badge';
 
 interface PatientRiskPanelProps {
   patientId: string;
@@ -51,13 +51,6 @@ const RISK_COLORS = {
   high: '#f97316',
   critical: '#ef4444'
 };
-
-const RISK_CHART_DATA = [
-  { name: 'Low Risk', value: 0, color: RISK_COLORS.low },
-  { name: 'Moderate Risk', value: 0, color: RISK_COLORS.moderate },
-  { name: 'High Risk', value: 0, color: RISK_COLORS.high },
-  { name: 'Critical Risk', value: 0, color: RISK_COLORS.critical }
-];
 
 export const PatientRiskPanel: React.FC<PatientRiskPanelProps> = ({
   patientId,
@@ -92,67 +85,68 @@ export const PatientRiskPanel: React.FC<PatientRiskPanelProps> = ({
         }
       });
 
-      if (response?.content?.[0]?.text) {
-        const analysisResult = JSON.parse(response.content[0].text);
+      // Handle different response structures properly
+      if (response && typeof response === 'object') {
+        let data;
         
-        // Transform the analytics service data into risk data
-        const transformedData: RiskData = {
-          overallRisk: analysisResult.riskScore || Math.floor(Math.random() * 100),
-          riskLevel: getRiskLevel(analysisResult.riskScore || 45),
-          riskFactors: [
-            {
-              category: 'Medical Conditions',
-              score: 65,
-              trend: 'stable',
-              description: 'Diabetes, Hypertension'
-            },
-            {
-              category: 'Medications',
-              score: 45,
-              trend: 'decreasing',
-              description: 'Multiple drug interactions'
-            },
-            {
-              category: 'Lab Values',
-              score: 30,
-              trend: 'increasing',
-              description: 'Elevated glucose levels'
-            },
-            {
-              category: 'Social Factors',
-              score: 25,
-              trend: 'stable',
-              description: 'Limited social support'
-            }
-          ],
-          recommendations: [
-            'Schedule endocrinology consultation',
-            'Monitor blood glucose levels daily',
-            'Review medication interactions',
-            'Consider lifestyle interventions'
-          ],
-          lastUpdated: new Date()
-        };
+        // Check if response has content array with text
+        if ('content' in response && Array.isArray((response as any).content) && (response as any).content[0]?.text) {
+          data = JSON.parse((response as any).content[0].text);
+        }
+        // Check if response has direct content object
+        else if ('content' in response && typeof (response as any).content === 'object') {
+          data = (response as any).content;
+        }
+        // If response is the data directly
+        else if ('riskData' in response || 'overallRisk' in response) {
+          data = response;
+        }
         
-        setRiskData(transformedData);
+        if (data?.riskData) {
+          setRiskData({
+            ...data.riskData,
+            lastUpdated: new Date(data.riskData.lastUpdated || new Date())
+          });
+        } else if (data?.overallRisk !== undefined) {
+          setRiskData({
+            ...data,
+            lastUpdated: new Date(data.lastUpdated || new Date())
+          });
+        }
       }
     } catch (err) {
-      console.error('Failed to load risk data:', err);
-      setError('Failed to load patient risk data');
+      console.error('Error loading risk data:', err);
+      setError('Failed to load risk assessment data');
       
-      // Fallback with sample data
+      // Mock data for development/testing
       setRiskData({
         overallRisk: 45,
         riskLevel: 'moderate',
         riskFactors: [
           {
-            category: 'Medical Conditions',
+            category: 'Cardiovascular',
             score: 65,
             trend: 'stable',
-            description: 'Existing conditions detected'
+            description: 'Blood pressure and cholesterol levels within acceptable range'
+          },
+          {
+            category: 'Diabetes',
+            score: 30,
+            trend: 'decreasing',
+            description: 'HbA1c improving with current treatment plan'
+          },
+          {
+            category: 'Medication Adherence',
+            score: 85,
+            trend: 'increasing',
+            description: 'Recent missed doses detected'
           }
         ],
-        recommendations: ['Review with healthcare provider'],
+        recommendations: [
+          'Schedule follow-up appointment within 2 weeks',
+          'Monitor blood pressure daily',
+          'Review medication adherence with patient'
+        ],
         lastUpdated: new Date()
       });
     } finally {
@@ -168,6 +162,19 @@ export const PatientRiskPanel: React.FC<PatientRiskPanelProps> = ({
   };
 
   const getRiskColor = (level: RiskData['riskLevel']) => RISK_COLORS[level];
+
+  const getRiskBadgeVariant = (level: RiskData['riskLevel']) => {
+    switch (level) {
+      case 'critical':
+        return 'destructive';
+      case 'high':
+        return 'destructive';
+      case 'moderate':
+        return 'warning';
+      default:
+        return 'success';
+    }
+  };
 
   const riskGaugeData = [
     { name: 'Risk', value: riskData.overallRisk, color: getRiskColor(riskData.riskLevel) },
@@ -196,12 +203,11 @@ export const PatientRiskPanel: React.FC<PatientRiskPanelProps> = ({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground">{error}</p>
+          <p className="text-sm text-muted-foreground mb-4">{error}</p>
           <Button 
             variant="outline" 
             size="sm" 
             onClick={loadRiskData}
-            className="mt-4"
           >
             <RefreshCw className="h-4 w-4 mr-2" />
             Retry
@@ -217,15 +223,9 @@ export const PatientRiskPanel: React.FC<PatientRiskPanelProps> = ({
         <CardTitle className="flex items-center gap-2">
           <Shield className="h-5 w-5" />
           Patient Risk Assessment
-          <span className={cn(
-            "text-xs px-2 py-1 rounded-full font-medium",
-            riskData.riskLevel === 'low' && "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
-            riskData.riskLevel === 'moderate' && "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
-            riskData.riskLevel === 'high' && "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
-            riskData.riskLevel === 'critical' && "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
-          )}>
+          <Badge variant={getRiskBadgeVariant(riskData.riskLevel)}>
             {riskData.riskLevel.toUpperCase()}
-          </span>
+          </Badge>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -317,3 +317,5 @@ export const PatientRiskPanel: React.FC<PatientRiskPanelProps> = ({
     </Card>
   );
 };
+
+export default PatientRiskPanel;
