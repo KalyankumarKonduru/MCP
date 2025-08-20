@@ -45,7 +45,8 @@ Meteor.methods({
     return messageId;
   },
 
-  async 'mcp.processQuery'(query: string, sessionId?: string) {
+  // *** FIXED: Main query processing method with proper context handling ***
+  async 'medical.processQueryWithIntelligentToolSelection'(query: string, sessionId?: string) {
     check(query, String);
     check(sessionId, Match.Maybe(String));
     
@@ -57,7 +58,7 @@ Meteor.methods({
       }
       
       try {
-        console.log(` Processing query with intelligent tool selection: "${query}"`);
+        console.log(`🔍 Processing query with intelligent tool selection: "${query}"`);
         
         // Build context for the query
         const context: any = { sessionId };
@@ -69,22 +70,48 @@ Meteor.methods({
             context.patientId = session.metadata.patientId;
           }
           
-          // Get conversation context
+          // *** FIX: Get conversation context and pass it properly ***
           const contextData = await ContextManager.getContext(sessionId);
           context.conversationContext = contextData;
+          
+          console.log(`📝 Loaded conversation context: ${contextData.recentMessages.length} messages, patient: ${contextData.patientContext || 'none'}`);
         }
         
         // Let Claude intelligently decide what tools to use (includes Epic tools)
         const response = await mcpManager.processQueryWithIntelligentToolSelection(query, context);
         
-        // Update context after processing
+        // *** FIX: Update context after processing to include new messages ***
         if (sessionId) {
+          // Create message objects for context tracking (these aren't saved to DB yet)
+          const userMessage = {
+            _id: '', // Temporary ID
+            content: query,
+            role: 'user' as const,
+            timestamp: new Date(),
+            sessionId
+          };
+          
+          const assistantMessage = {
+            _id: '', // Temporary ID
+            content: response,
+            role: 'assistant' as const,
+            timestamp: new Date(),
+            sessionId
+          };
+          
+          // Update context with both messages
+          await ContextManager.updateContext(sessionId, userMessage);
+          await ContextManager.updateContext(sessionId, assistantMessage);
+          
+          // Extract and update context metadata
           await extractAndUpdateContext(query, response, sessionId);
+          
+          console.log(`✅ Updated conversation context for session ${sessionId}`);
         }
         
         return response;
       } catch (error) {
-        console.error('Intelligent MCP processing error:', error);
+        console.error('❌ Intelligent MCP processing error:', error);
         
         // Provide helpful error messages based on the error type
         if (error.message.includes('not connected')) {
@@ -102,6 +129,12 @@ Meteor.methods({
     }
     
     return 'Simulation mode - no actual processing';
+  },
+
+  // *** ADDED: Backward compatibility method ***
+  async 'mcp.processQuery'(query: string, sessionId?: string) {
+    // Route to the main method
+    return await Meteor.call('medical.processQueryWithIntelligentToolSelection', query, sessionId);
   },
 
   async 'mcp.switchProvider'(provider: 'anthropic' | 'ozwell') {
@@ -208,7 +241,8 @@ Meteor.methods({
         message: 'Health check completed',
         servers: {
           epic: health.epic ? 'healthy' : 'unavailable',
-          aidbox: health.aidbox ? 'healthy' : 'unavailable'
+          aidbox: health.aidbox ? 'healthy' : 'unavailable',
+          medical: health.medical ? 'healthy' : 'unavailable'
         },
         timestamp: new Date()
       };
@@ -238,11 +272,11 @@ async 'medical.uploadDocument'(fileData: {
     sessionId: Match.Maybe(String)
   });
 
-  console.log(`  Upload request for: ${fileData.filename} (${fileData.mimeType})`);
-  console.log(` Content size: ${fileData.content.length} chars`);
+  console.log(`📄 Upload request for: ${fileData.filename} (${fileData.mimeType})`);
+  console.log(`📊 Content size: ${fileData.content.length} chars`);
 
   if (this.isSimulation) {
-    console.log(' Simulation mode - returning mock document ID');
+    console.log('🔄 Simulation mode - returning mock document ID');
     return { 
       success: true, 
       documentId: 'sim-' + Date.now(),
@@ -253,7 +287,7 @@ async 'medical.uploadDocument'(fileData: {
   const mcpManager = MCPClientManager.getInstance();
   
   if (!mcpManager.isReady()) {
-    console.error(' MCP Client not ready');
+    console.error('❌ MCP Client not ready');
     throw new Meteor.Error('mcp-not-ready', 'Medical document system is not available. Please contact administrator.');
   }
 
@@ -269,7 +303,7 @@ async 'medical.uploadDocument'(fileData: {
       throw new Error('File too large (max 10MB)');
     }
 
-    console.log(` Estimated file size: ${Math.round(estimatedFileSize / 1024)}KB`);
+    console.log(`📏 Estimated file size: ${Math.round(estimatedFileSize / 1024)}KB`);
 
     const medical = mcpManager.getMedicalOperations();
     
@@ -288,7 +322,7 @@ async 'medical.uploadDocument'(fileData: {
       }
     );
     
-    console.log(' MCP upload successful:', result);
+    console.log('✅ MCP upload successful:', result);
     
     // Update session metadata if we have session ID
     if (fileData.sessionId && result.documentId) {
@@ -302,9 +336,9 @@ async 'medical.uploadDocument'(fileData: {
             'metadata.lastUpload': new Date()
           }
         });
-        console.log(' Session metadata updated');
+        console.log('✅ Session metadata updated');
       } catch (updateError) {
-        console.warn(' Failed to update session metadata:', updateError);
+        console.warn('⚠️ Failed to update session metadata:', updateError);
         // Don't fail the whole operation for this
       }
     }
@@ -312,7 +346,7 @@ async 'medical.uploadDocument'(fileData: {
     return result;
     
   } catch (error: any) {
-    console.error(' Document upload error:', error);
+    console.error('❌ Document upload error:', error);
     
     // Provide specific error messages
     if (error.message?.includes('not connected') || error.message?.includes('ECONNREFUSED')) {
@@ -328,7 +362,6 @@ async 'medical.uploadDocument'(fileData: {
     }
   }
 },
-
 
   async 'medical.processDocument'(documentId: string, sessionId?: string) {
     check(documentId, String);
@@ -358,30 +391,49 @@ async 'medical.uploadDocument'(fileData: {
       return result;
       
     } catch (error) {
-      console.error(' Document processing error:', error);
+      console.error('❌ Document processing error:', error);
       throw new Meteor.Error('processing-failed', `Failed to process document: ${error.message || 'Unknown error'}`);
     }
   }
 });
 
-// Helper function to extract and update context
+// *** ENHANCED: Helper function to extract and update context ***
 async function extractAndUpdateContext(
   query: string, 
   response: string, 
   sessionId: string
 ): Promise<void> {
   try {
-    // Extract patient name from query
-    const patientMatch = query.match(/(?:patient|for)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/i);
-    if (patientMatch) {
+    // Extract patient name/ID from query or response
+    const patientPatterns = [
+      /(?:patient|for|create.*patient.*named?)\s+"?([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)"?/i,
+      /(?:patient|create)\s+named?\s+"?([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)"?/i,
+      /(?:Patient ID|Patient|patientId):\s*"?([A-Za-z0-9\-_]+)"?/i,
+      /"patientId":\s*"([^"]+)"/i,
+      /(?:created.*patient|patient.*created).*"([^"]+)"/i,
+      /Patient:\s*([A-Za-z0-9\-_\s]+)/i
+    ];
+    
+    let patientId = null;
+    for (const pattern of patientPatterns) {
+      const match = query.match(pattern) || response.match(pattern);
+      if (match) {
+        patientId = match[1].trim();
+        break;
+      }
+    }
+    
+    if (patientId) {
+      console.log(`📋 Extracted patient context: ${patientId}`);
       await SessionsCollection.updateAsync(sessionId, {
-        $set: { 'metadata.patientId': patientMatch[1] }
+        $set: { 'metadata.patientId': patientId }
       });
     }
     
     // Extract medical terms from response
     const medicalTerms = extractMedicalTermsFromResponse(response);
     if (medicalTerms.length > 0) {
+      console.log(`🏷️ Extracted medical terms: ${medicalTerms.join(', ')}`);
       await SessionsCollection.updateAsync(sessionId, {
         $addToSet: {
           'metadata.tags': { $each: medicalTerms }
@@ -392,12 +444,25 @@ async function extractAndUpdateContext(
     // Extract data sources mentioned in response
     const dataSources = extractDataSources(response);
     if (dataSources.length > 0) {
+      console.log(`📊 Data sources used: ${dataSources.join(', ')}`);
       await SessionsCollection.updateAsync(sessionId, {
         $addToSet: {
           'metadata.dataSources': { $each: dataSources }
         }
       });
     }
+    
+    // Extract medications if mentioned
+    const medications = extractMedications(query, response);
+    if (medications.length > 0) {
+      console.log(`💊 Extracted medications: ${medications.join(', ')}`);
+      await SessionsCollection.updateAsync(sessionId, {
+        $addToSet: {
+          'metadata.medications': { $each: medications }
+        }
+      });
+    }
+    
   } catch (error) {
     console.error('Error updating context:', error);
   }
@@ -408,7 +473,8 @@ function extractMedicalTermsFromResponse(response: string): string[] {
     /\b(?:diagnosed with|diagnosis of)\s+([^,.]+)/gi,
     /\b(?:prescribed|medication)\s+([^,.]+)/gi,
     /\b(?:treatment for|treating)\s+([^,.]+)/gi,
-    /\b(?:condition|disease):\s*([^,.]+)/gi
+    /\b(?:condition|disease):\s*([^,.]+)/gi,
+    /\b(?:symptoms?|presenting with)\s+([^,.]+)/gi
   ];
   
   const terms = new Set<string>();
@@ -417,7 +483,10 @@ function extractMedicalTermsFromResponse(response: string): string[] {
     let match;
     while ((match = pattern.exec(response)) !== null) {
       if (match[1]) {
-        terms.add(match[1].trim().toLowerCase());
+        const term = match[1].trim().toLowerCase();
+        if (term.length > 2) { // Filter out very short matches
+          terms.add(term);
+        }
       }
     }
   });
@@ -444,6 +513,30 @@ function extractDataSources(response: string): string[] {
   return Array.from(sources);
 }
 
+function extractMedications(query: string, response: string): string[] {
+  const medicationPatterns = [
+    /(?:medication|drug|medicine):\s*([^,.]+)/gi,
+    /(?:prescribed|prescribe)\s+([A-Za-z]+)/gi,
+    /\b(dolo|paracetamol|ibuprofen|aspirin|amoxicillin|metformin|atorvastatin|lisinopril|omeprazole|amlodipine)\b/gi
+  ];
+  
+  const medications = new Set<string>();
+  const fullText = `${query} ${response}`;
+  
+  medicationPatterns.forEach(pattern => {
+    let match;
+    while ((match = pattern.exec(fullText)) !== null) {
+      if (match[1]) {
+        medications.add(match[1].trim());
+      } else if (match[0]) {
+        medications.add(match[0].trim());
+      }
+    }
+  });
+  
+  return Array.from(medications).slice(0, 5);
+}
+
 // Utility function to sanitize patient names (used by intelligent tool selection)
 function sanitizePatientName(name: string): string {
   return name
@@ -460,5 +553,6 @@ export {
   extractAndUpdateContext,
   extractMedicalTermsFromResponse,
   extractDataSources,
+  extractMedications,
   sanitizePatientName
 };
