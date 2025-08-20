@@ -1,5 +1,3 @@
-import { Meteor } from 'meteor/meteor';
-
 interface MCPRequest {
   jsonrpc: '2.0';
   method: string;

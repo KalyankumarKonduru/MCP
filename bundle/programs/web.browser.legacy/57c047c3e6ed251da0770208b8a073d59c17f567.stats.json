@@ -3,8 +3,8 @@
     "name": "standard-minifier-js",
     "version": "3.1.0"
   },
-  "totalMinifiedBytes": 1196777,
-  "totalMinifiedGzipBytes": 324236,
+  "totalMinifiedBytes": 1196791,
+  "totalMinifiedGzipBytes": 324238,
   "minifiedBytesByPackage": {
     "packages/core-runtime.js": 1921,
     "packages/meteor.js": 11918,
@@ -12,7 +12,7 @@
     "packages/mobile-experience.js": 74,
     "packages/modules-runtime.js": 5341,
     "packages/modules.js": [
-      683296,
+      683310,
       {
         "node_modules": {
           "meteor": {
@@ -80,7 +80,7 @@
                 "regeneratorRuntime.js": 1385,
                 "OverloadYield.js": 116,
                 "regenerator.js": 2119,
-                "regeneratorDefine.js": 431,
+                "regeneratorDefine.js": 445,
                 "regeneratorAsync.js": 227,
                 "regeneratorAsyncGen.js": 209,
                 "regeneratorAsyncIterator.js": 678,

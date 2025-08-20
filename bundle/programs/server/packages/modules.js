@@ -271,7 +271,7 @@ module.useNode();
                                                                                                                        //
 module.exports = {
   "name": "@babel/runtime",
-  "version": "7.28.2",
+  "version": "7.27.6",
   "description": "babel's modular runtime helpers",
   "license": "MIT",
   "publishConfig": {

@@ -4,7 +4,7 @@
     "version": "3.1.0"
   },
   "totalMinifiedBytes": 1578128,
-  "totalMinifiedGzipBytes": 301440,
+  "totalMinifiedGzipBytes": 301441,
   "minifiedBytesByPackage": {
     "packages/core-runtime.js": 1921,
     "packages/meteor.js": 11918,
