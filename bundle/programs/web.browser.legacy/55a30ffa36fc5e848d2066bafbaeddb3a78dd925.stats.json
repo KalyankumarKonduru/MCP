@@ -3,8 +3,8 @@
     "name": "standard-minifier-js",
     "version": "3.1.0"
   },
-  "totalMinifiedBytes": 1196791,
-  "totalMinifiedGzipBytes": 324238,
+  "totalMinifiedBytes": 2179335,
+  "totalMinifiedGzipBytes": 541477,
   "minifiedBytesByPackage": {
     "packages/core-runtime.js": 1921,
     "packages/meteor.js": 11918,
@@ -12,7 +12,7 @@
     "packages/mobile-experience.js": 74,
     "packages/modules-runtime.js": 5341,
     "packages/modules.js": [
-      683310,
+      1611598,
       {
         "node_modules": {
           "meteor": {
@@ -113,6 +113,746 @@
             "dist": {
               "cjs": {
                 "lucide-react.js": 511149
+              }
+            }
+          },
+          "recharts": {
+            "package.json": 104,
+            "lib": {
+              "index.js": 7167,
+              "container": {
+                "Surface.js": 1743,
+                "Layer.js": 1420,
+                "ClipPathProvider.js": 1084,
+                "RootSurface.js": 2257
+              },
+              "util": {
+                "ReactUtils.js": 1851,
+                "DataUtils.js": 1821,
+                "types.js": 859,
+                "excludeEventProps.js": 3070,
+                "svgPropertiesNoEvents.js": 4138,
+                "payload": {
+                  "getUniqPayload.js": 280
+                },
+                "useElementOffset.js": 601,
+                "ChartUtils.js": 8520,
+                "PolarUtils.js": 2828,
+                "getSliced.js": 163,
+                "Constants.js": 609,
+                "tooltip": {
+                  "translate.js": 1800
+                },
+                "Global.js": 233,
+                "isWellBehavedNumber.js": 227,
+                "cursor": {
+                  "getCursorRectangle.js": 306,
+                  "getRadialCursorPoints.js": 322,
+                  "getCursorPoints.js": 554
+                },
+                "resolveDefaultProps.js": 1253,
+                "isDomainSpecifiedByUser.js": 1600,
+                "scale": {
+                  "index.js": 335,
+                  "getNiceTickValues.js": 2744,
+                  "util": {
+                    "utils.js": 1386,
+                    "arithmetic.js": 775
+                  }
+                },
+                "stacks": {
+                  "getStackSeriesIdentifier.js": 148
+                },
+                "Events.js": 352,
+                "LogUtils.js": 215,
+                "DOMUtils.js": 2571,
+                "LRUCache.js": 943,
+                "ReduceCSSCalc.js": 2076,
+                "ActiveShapeUtils.js": 3174,
+                "useAnimationId.js": 348,
+                "useUniqueId.js": 193,
+                "useId.js": 766,
+                "RadialBarUtils.js": 2176,
+                "BarUtils.js": 3025,
+                "CssPrefixUtils.js": 1316,
+                "CartesianUtils.js": 2933,
+                "ShallowEqual.js": 305,
+                "TickUtils.js": 638,
+                "getEveryNthWithCondition.js": 262,
+                "ScatterUtils.js": 1501,
+                "YAxisUtils.js": 406,
+                "getChartPointer.js": 345,
+                "useReportScale.js": 521,
+                "FunnelUtils.js": 2231
+              },
+              "component": {
+                "Legend.js": 4708,
+                "DefaultLegendContent.js": 4221,
+                "Tooltip.js": 4401,
+                "DefaultTooltipContent.js": 3608,
+                "TooltipBoundingBox.js": 3396,
+                "Cursor.js": 3315,
+                "ResponsiveContainer.js": 3799,
+                "Cell.js": 136,
+                "Text.js": 4283,
+                "Label.js": 8058,
+                "LabelList.js": 3717,
+                "Customized.js": 1367,
+                "ActivePoints.js": 2610
+              },
+              "context": {
+                "legendPortalContext.js": 238,
+                "legendPayloadContext.js": 231,
+                "chartLayoutContext.js": 1637,
+                "PanoramaContext.js": 804,
+                "accessibilityContext.js": 225,
+                "useTooltipAxis.js": 1567,
+                "tooltipPortalContext.js": 242,
+                "tooltipContext.js": 794,
+                "RegisterGraphicalItemId.js": 884,
+                "ErrorBarContext.js": 1631,
+                "chartDataContext.js": 874,
+                "brushUpdateContext.js": 192
+              },
+              "shape": {
+                "Symbols.js": 3419,
+                "Curve.js": 3479,
+                "Cross.js": 2791,
+                "Rectangle.js": 3610,
+                "Sector.js": 4470,
+                "Polygon.js": 2550,
+                "Dot.js": 1100,
+                "Trapezoid.js": 2365
+              },
+              "state": {
+                "hooks.js": 553,
+                "RechartsReduxContext.js": 176,
+                "selectors": {
+                  "legendSelectors.js": 502,
+                  "selectChartOffsetInternal.js": 2485,
+                  "containerSelectors.js": 345,
+                  "selectAllAxes.js": 319,
+                  "brushSelectors.js": 574,
+                  "tooltipSelectors.js": 6689,
+                  "axisSelectors.js": 22887,
+                  "dataSelectors.js": 553,
+                  "rootPropsSelectors.js": 738,
+                  "polarAxisSelectors.js": 3967,
+                  "combiners": {
+                    "combineAxisRangeWithReverse.js": 211,
+                    "combineDisplayedStackedData.js": 616,
+                    "combineActiveLabel.js": 292,
+                    "combineTooltipInteractionState.js": 1879,
+                    "combineActiveTooltipIndex.js": 391,
+                    "combineCoordinateForDefaultIndex.js": 396,
+                    "combineTooltipPayloadConfigurations.js": 491,
+                    "combineTooltipPayload.js": 2230
+                  },
+                  "pickAxisType.js": 132,
+                  "pickAxisId.js": 130,
+                  "selectTooltipAxis.js": 327,
+                  "selectTooltipAxisType.js": 312,
+                  "selectTooltipAxisId.js": 166,
+                  "selectTooltipEventType.js": 606,
+                  "selectTooltipSettings.js": 163,
+                  "selectTooltipPayloadSearcher.js": 191,
+                  "selectTooltipState.js": 148,
+                  "selectors.js": 2925,
+                  "polarGridSelectors.js": 485,
+                  "polarScaleSelectors.js": 1443,
+                  "polarSelectors.js": 2001,
+                  "pieSelectors.js": 2389,
+                  "selectChartOffset.js": 306,
+                  "selectPlotArea.js": 411,
+                  "radarSelectors.js": 2865,
+                  "radialBarSelectors.js": 5605,
+                  "barSelectors.js": 6419,
+                  "lineSelectors.js": 1317,
+                  "areaSelectors.js": 1883,
+                  "scatterSelectors.js": 1224,
+                  "selectActivePropsFromChartPointer.js": 598,
+                  "touchSelectors.js": 494,
+                  "funnelSelectors.js": 1880
+                },
+                "layoutSlice.js": 776,
+                "legendSlice.js": 1066,
+                "types": {
+                  "StackedGraphicalItem.js": 146
+                },
+                "tooltipSlice.js": 3375,
+                "optionsSlice.js": 643,
+                "chartDataSlice.js": 921,
+                "polarAxisSlice.js": 759,
+                "SetTooltipEntrySettings.js": 430,
+                "SetLegendPayload.js": 707,
+                "SetGraphicalItem.js": 720,
+                "graphicalItemsSlice.js": 1351,
+                "errorBarSlice.js": 567,
+                "brushSlice.js": 439,
+                "referenceElementsSlice.js": 1001,
+                "cartesianAxisSlice.js": 2069,
+                "RechartsStoreProvider.js": 972,
+                "store.js": 1534,
+                "mouseEventsMiddleware.js": 1308,
+                "reduxDevtoolsJsonStringifyReplacer.js": 264,
+                "rootPropsSlice.js": 850,
+                "polarOptionsSlice.js": 356,
+                "keyboardEventsMiddleware.js": 1742,
+                "externalEventsMiddleware.js": 757,
+                "touchEventsMiddleware.js": 1366,
+                "ReportMainChartProps.js": 437,
+                "ReportChartProps.js": 267,
+                "ReportPolarOptions.js": 277
+              },
+              "animation": {
+                "Animate.js": 5597,
+                "easing.js": 1635,
+                "configUpdate.js": 2294,
+                "util.js": 1569,
+                "useAnimationManager.js": 365,
+                "createDefaultAnimationManager.js": 262,
+                "AnimationManager.js": 533,
+                "timeoutController.js": 436,
+                "JavascriptAnimate.js": 975,
+                "CSSTransitionAnimate.js": 842
+              },
+              "polar": {
+                "defaultPolarAngleAxisProps.js": 306,
+                "defaultPolarRadiusAxisProps.js": 327,
+                "PolarGrid.js": 5035,
+                "PolarRadiusAxis.js": 5838,
+                "PolarAngleAxis.js": 5881,
+                "Pie.js": 10716,
+                "Radar.js": 7922,
+                "RadialBar.js": 9220
+              },
+              "synchronisation": {
+                "useChartSynchronisation.js": 3273,
+                "syncSelectors.js": 160
+              },
+              "hooks.js": 960,
+              "cartesian": {
+                "Bar.js": 10328,
+                "GraphicalItemClipPath.js": 1381,
+                "Brush.js": 13767,
+                "ReferenceLine.js": 4490,
+                "ReferenceDot.js": 3733,
+                "ReferenceArea.js": 4026,
+                "CartesianAxis.js": 6791,
+                "getTicks.js": 3276,
+                "getEquidistantTicks.js": 534,
+                "CartesianGrid.js": 7440,
+                "Line.js": 10346,
+                "Area.js": 12543,
+                "Scatter.js": 9954,
+                "ZAxis.js": 1861,
+                "XAxis.js": 4062,
+                "YAxis.js": 4669,
+                "ErrorBar.js": 4834,
+                "Funnel.js": 8890
+              },
+              "chart": {
+                "LineChart.js": 889,
+                "CartesianChart.js": 2675,
+                "CategoricalChart.js": 1900,
+                "RechartsWrapper.js": 4173,
+                "BarChart.js": 893,
+                "PieChart.js": 1056,
+                "PolarChart.js": 2836,
+                "Treemap.js": 12988,
+                "Sankey.js": 12774,
+                "RadarChart.js": 1064,
+                "ScatterChart.js": 898,
+                "AreaChart.js": 889,
+                "RadialBarChart.js": 1080,
+                "ComposedChart.js": 901,
+                "SunburstChart.js": 5960,
+                "FunnelChart.js": 895
+              }
+            }
+          },
+          "clsx": {
+            "package.json": 101,
+            "dist": {
+              "clsx.js": 405
+            }
+          },
+          "es-toolkit": {
+            "compat": {
+              "get.js": 66,
+              "uniqBy.js": 71,
+              "sortBy.js": 71,
+              "isEqual.js": 70,
+              "range.js": 68,
+              "throttle.js": 78,
+              "last.js": 67,
+              "maxBy.js": 68,
+              "minBy.js": 68,
+              "isPlainObject.js": 89,
+              "omit.js": 68,
+              "sumBy.js": 68
+            },
+            "dist": {
+              "compat": {
+                "object": {
+                  "get.js": 831,
+                  "property.js": 177,
+                  "cloneDeep.js": 176,
+                  "cloneDeepWith.js": 603,
+                  "has.js": 555,
+                  "omit.js": 445,
+                  "unset.js": 897
+                },
+                "_internal": {
+                  "isDeepKey.js": 241,
+                  "toKey.js": 205,
+                  "getSymbols.js": 219,
+                  "getTag.js": 212,
+                  "tags.js": 1112,
+                  "isIndex.js": 290,
+                  "compareValues.js": 340,
+                  "isKey.js": 388,
+                  "isIterateeCall.js": 375,
+                  "toArray.js": 156
+                },
+                "util": {
+                  "toPath.js": 440,
+                  "iteratee.js": 480,
+                  "eq.js": 160,
+                  "toFinite.js": 273,
+                  "toNumber.js": 190
+                },
+                "array": {
+                  "uniqBy.js": 336,
+                  "sortBy.js": 362,
+                  "orderBy.js": 1053,
+                  "last.js": 260
+                },
+                "predicate": {
+                  "isArrayLikeObject.js": 224,
+                  "isArrayLike.js": 220,
+                  "isObjectLike.js": 156,
+                  "matches.js": 217,
+                  "isMatch.js": 183,
+                  "isMatchWith.js": 1740,
+                  "isObject.js": 177,
+                  "matchesProperty.js": 480,
+                  "isArguments.js": 228,
+                  "isSymbol.js": 163,
+                  "isPlainObject.js": 556
+                },
+                "math": {
+                  "range.js": 439,
+                  "maxBy.js": 278,
+                  "minBy.js": 278,
+                  "sumBy.js": 302
+                },
+                "function": {
+                  "throttle.js": 245,
+                  "debounce.js": 596
+                }
+              },
+              "_internal": {
+                "isUnsafeProperty.js": 147
+              },
+              "array": {
+                "uniqBy.js": 232,
+                "flatten.js": 257,
+                "last.js": 134,
+                "maxBy.js": 229,
+                "minBy.js": 229
+              },
+              "function": {
+                "identity.js": 126,
+                "noop.js": 113,
+                "debounce.js": 627
+              },
+              "predicate": {
+                "isLength.js": 154,
+                "isPrimitive.js": 177,
+                "isTypedArray.js": 176,
+                "isEqual.js": 208,
+                "isEqualWith.js": 2766,
+                "isPlainObject.js": 330
+              },
+              "object": {
+                "cloneDeep.js": 204,
+                "cloneDeepWith.js": 2697
+              },
+              "browser.global.js": 72407
+            },
+            "package.json": 150
+          },
+          "react-is": {
+            "package.json": 79,
+            "index.js": 75,
+            "cjs": {
+              "react-is.production.js": 2023,
+              "react-is.development.js": 17
+            }
+          },
+          "victory-vendor": {
+            "d3-shape.js": 48,
+            "lib": {
+              "d3-shape.js": 69,
+              "d3-scale.js": 69
+            },
+            "lib-vendor": {
+              "d3-shape": {
+                "src": {
+                  "index.js": 7771,
+                  "arc.js": 4102,
+                  "constant.js": 134,
+                  "math.js": 474,
+                  "area.js": 2022,
+                  "array.js": 211,
+                  "curve": {
+                    "linear.js": 584,
+                    "radial.js": 587,
+                    "bump.js": 1229,
+                    "basisClosed.js": 1182,
+                    "basis.js": 1040,
+                    "basisOpen.js": 813,
+                    "bundle.js": 706,
+                    "cardinalClosed.js": 1210,
+                    "cardinal.js": 1151,
+                    "cardinalOpen.js": 959,
+                    "catmullRomClosed.js": 1532,
+                    "catmullRom.js": 1789,
+                    "catmullRomOpen.js": 1279,
+                    "linearClosed.js": 484,
+                    "monotone.js": 1772,
+                    "natural.js": 1129,
+                    "step.js": 989
+                  },
+                  "line.js": 1134,
+                  "point.js": 142,
+                  "pie.js": 1441,
+                  "descending.js": 137,
+                  "identity.js": 113,
+                  "areaRadial.js": 1464,
+                  "lineRadial.js": 1022,
+                  "pointRadial.js": 158,
+                  "link.js": 1246,
+                  "symbol.js": 1343,
+                  "symbol": {
+                    "asterisk.js": 318,
+                    "circle.js": 204,
+                    "cross.js": 378,
+                    "diamond.js": 278,
+                    "diamond2.js": 243,
+                    "plus.js": 246,
+                    "square.js": 187,
+                    "square2.js": 244,
+                    "star.js": 456,
+                    "triangle.js": 262,
+                    "triangle2.js": 268,
+                    "wye.js": 476,
+                    "x.js": 249
+                  },
+                  "noop.js": 104,
+                  "stack.js": 1008,
+                  "offset": {
+                    "none.js": 249,
+                    "expand.js": 332,
+                    "diverging.js": 282,
+                    "silhouette.js": 328,
+                    "wiggle.js": 495
+                  },
+                  "order": {
+                    "none.js": 162,
+                    "appearance.js": 351,
+                    "ascending.js": 347,
+                    "descending.js": 218,
+                    "insideOut.js": 375,
+                    "reverse.js": 213
+                  }
+                }
+              },
+              "d3-path": {
+                "src": {
+                  "index.js": 235,
+                  "path.js": 1951
+                }
+              },
+              "d3-scale": {
+                "src": {
+                  "index.js": 3705,
+                  "band.js": 1552,
+                  "init.js": 452,
+                  "ordinal.js": 728,
+                  "identity.js": 532,
+                  "linear.js": 1512,
+                  "continuous.js": 1890,
+                  "constant.js": 132,
+                  "number.js": 113,
+                  "tickFormat.js": 737,
+                  "log.js": 1992,
+                  "nice.js": 226,
+                  "symlog.js": 603,
+                  "pow.js": 757,
+                  "radial.js": 1033,
+                  "quantile.js": 908,
+                  "quantize.js": 869,
+                  "threshold.js": 698,
+                  "time.js": 1931,
+                  "utcTime.js": 458,
+                  "sequential.js": 1734,
+                  "sequentialQuantile.js": 743,
+                  "diverging.js": 1794
+                }
+              },
+              "d3-array": {
+                "src": {
+                  "index.js": 8379,
+                  "bisect.js": 409,
+                  "ascending.js": 158,
+                  "bisector.js": 735,
+                  "descending.js": 158,
+                  "number.js": 287,
+                  "count.js": 242,
+                  "cross.js": 521,
+                  "cumsum.js": 190,
+                  "deviation.js": 237,
+                  "variance.js": 313,
+                  "extent.js": 319,
+                  "fsum.js": 826,
+                  "group.js": 1106,
+                  "identity.js": 113,
+                  "groupSort.js": 1023,
+                  "sort.js": 909,
+                  "permute.js": 137,
+                  "bin.js": 2275,
+                  "array.js": 153,
+                  "constant.js": 116,
+                  "nice.js": 318,
+                  "ticks.js": 921,
+                  "threshold": {
+                    "sturges.js": 238,
+                    "freedmanDiaconis.js": 315,
+                    "scott.js": 288
+                  },
+                  "quantile.js": 1318,
+                  "max.js": 274,
+                  "min.js": 274,
+                  "quickselect.js": 679,
+                  "maxIndex.js": 287,
+                  "mean.js": 267,
+                  "median.js": 214,
+                  "merge.js": 167,
+                  "minIndex.js": 287,
+                  "mode.js": 389,
+                  "pairs.js": 220,
+                  "range.js": 254,
+                  "rank.js": 656,
+                  "least.js": 394,
+                  "leastIndex.js": 345,
+                  "greatest.js": 394,
+                  "greatestIndex.js": 345,
+                  "scan.js": 235,
+                  "shuffle.js": 274,
+                  "sum.js": 220,
+                  "transpose.js": 355,
+                  "zip.js": 215,
+                  "every.js": 235,
+                  "some.js": 234,
+                  "filter.js": 244,
+                  "map.js": 304,
+                  "reduce.js": 351,
+                  "reverse.js": 222,
+                  "difference.js": 240,
+                  "disjoint.js": 340,
+                  "intersection.js": 345,
+                  "subset.js": 211,
+                  "superset.js": 374,
+                  "union.js": 238
+                }
+              },
+              "internmap": {
+                "src": {
+                  "index.js": 1033
+                }
+              },
+              "d3-interpolate": {
+                "src": {
+                  "index.js": 3771,
+                  "value.js": 1338,
+                  "rgb.js": 1479,
+                  "basis.js": 381,
+                  "basisClosed.js": 286,
+                  "color.js": 614,
+                  "constant.js": 122,
+                  "array.js": 1083,
+                  "numberArray.js": 323,
+                  "date.js": 183,
+                  "number.js": 155,
+                  "object.js": 384,
+                  "string.js": 786,
+                  "discrete.js": 191,
+                  "hue.js": 214,
+                  "round.js": 167,
+                  "transform": {
+                    "index.js": 1390,
+                    "parse.js": 1120,
+                    "decompose.js": 472
+                  },
+                  "zoom.js": 818,
+                  "hsl.js": 1060,
+                  "lab.js": 452,
+                  "hcl.js": 1060,
+                  "cubehelix.js": 1139,
+                  "piecewise.js": 376,
+                  "quantize.js": 166
+                }
+              },
+              "d3-color": {
+                "src": {
+                  "index.js": 1416,
+                  "color.js": 7838,
+                  "define.js": 244,
+                  "lab.js": 2957,
+                  "math.js": 159,
+                  "cubehelix.js": 1738
+                }
+              },
+              "d3-format": {
+                "src": {
+                  "index.js": 1721,
+                  "defaultLocale.js": 348,
+                  "locale.js": 2290,
+                  "exponent.js": 192,
+                  "formatDecimal.js": 388,
+                  "formatGroup.js": 302,
+                  "formatNumerals.js": 179,
+                  "formatSpecifier.js": 1076,
+                  "formatTrim.js": 284,
+                  "formatTypes.js": 582,
+                  "formatPrefixAuto.js": 475,
+                  "formatRounded.js": 332,
+                  "identity.js": 113,
+                  "precisionFixed.js": 231,
+                  "precisionPrefix.js": 290,
+                  "precisionRound.js": 271
+                }
+              },
+              "d3-time": {
+                "src": {
+                  "index.js": 6838,
+                  "interval.js": 1060,
+                  "millisecond.js": 526,
+                  "second.js": 444,
+                  "duration.js": 357,
+                  "minute.js": 473,
+                  "hour.js": 495,
+                  "day.js": 424,
+                  "week.js": 869,
+                  "month.js": 449,
+                  "year.js": 663,
+                  "utcMinute.js": 438,
+                  "utcHour.js": 430,
+                  "utcDay.js": 428,
+                  "utcWeek.js": 908,
+                  "utcMonth.js": 482,
+                  "utcYear.js": 708,
+                  "ticks.js": 1733
+                }
+              },
+              "d3-time-format": {
+                "src": {
+                  "index.js": 1537,
+                  "defaultLocale.js": 788,
+                  "locale.js": 8890,
+                  "isoFormat.js": 286,
+                  "isoParse.js": 293
+                }
+              }
+            },
+            "d3-scale.js": 48
+          },
+          "use-sync-external-store": {
+            "shim": {
+              "with-selector.js": 110,
+              "index.js": 96
+            },
+            "cjs": {
+              "use-sync-external-store-shim": {
+                "with-selector.production.js": 1099,
+                "with-selector.development.js": 17
+              },
+              "use-sync-external-store-shim.production.js": 1023,
+              "use-sync-external-store-shim.development.js": 17,
+              "use-sync-external-store-with-selector.production.js": 1058,
+              "use-sync-external-store-with-selector.development.js": 17
+            },
+            "with-selector.js": 104
+          },
+          "reselect": {
+            "package.json": 132,
+            "dist": {
+              "cjs": {
+                "reselect.cjs": 9156
+              }
+            }
+          },
+          "@reduxjs": {
+            "toolkit": {
+              "package.json": 137,
+              "dist": {
+                "cjs": {
+                  "index.js": 81,
+                  "redux-toolkit.production.min.cjs": 23501,
+                  "redux-toolkit.development.cjs": 31818
+                }
+              }
+            }
+          },
+          "redux": {
+            "package.json": 119,
+            "dist": {
+              "cjs": {
+                "redux.cjs": 5611
+              }
+            }
+          },
+          "immer": {
+            "package.json": 123,
+            "dist": {
+              "cjs": {
+                "index.js": 72,
+                "immer.cjs.production.js": 12014,
+                "immer.cjs.development.js": 13745
+              }
+            }
+          },
+          "redux-thunk": {
+            "package.json": 137,
+            "dist": {
+              "cjs": {
+                "redux-thunk.cjs": 605
+              }
+            }
+          },
+          "decimal.js-light": {
+            "package.json": 127,
+            "decimal.js": 12915
+          },
+          "eventemitter3": {
+            "package.json": 83,
+            "index.js": 2785
+          },
+          "tiny-invariant": {
+            "package.json": 138,
+            "dist": {
+              "tiny-invariant.cjs.js": 122
+            }
+          },
+          "react-redux": {
+            "package.json": 130,
+            "dist": {
+              "cjs": {
+                "index.js": 79,
+                "react-redux.production.min.cjs": 9895,
+                "react-redux.development.cjs": 13838
               }
             }
           },
@@ -959,7 +1699,7 @@
       {}
     ],
     "app/app.js": [
-      37599,
+      91855,
       {
         "imports": {
           "lib": {
@@ -981,7 +1721,7 @@
               "useScrollToBottom.ts": 459
             },
             "App.tsx": 359,
-            "Chat.tsx": 11113
+            "Chat.tsx": 12012
           }
         },
         "client": {
@@ -995,8 +1735,18 @@
               "Message.tsx": 1640,
               "Overview.tsx": 6364
             },
+            "dashboard": {
+              "DashboardContainer.tsx": 7082,
+              "MedicationInteractionPanel.tsx": 10764,
+              "MetricsCard.tsx": 5850,
+              "PatientRiskPanel.tsx": 6703,
+              "PopulationHealthPanel.tsx": 9266,
+              "TemporalTrendsPanel.tsx": 10598
+            },
             "ui": {
+              "Badge.tsx": 1206,
               "Button.tsx": 758,
+              "Card.tsx": 1692,
               "Textarea.tsx": 505
             }
           },

@@ -2487,3 +2487,63 @@ body {
       height: -webkit-fill-available;
     }
   }
+  /* Add these styles to your existing CSS file */
+
+/* Dashboard Panel Styles */
+.dashboard-panel {
+  position: fixed;
+  right: 0;
+  top: 0;
+  height: 100vh;
+  width: 400px;
+  background: white;
+  border-left: 1px solid var(--border);
+  z-index: 30;
+  box-shadow: -4px 0 8px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+/* Adjust main content when dashboard is open */
+.main-content.dashboard-open {
+  margin-right: 400px;
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 1024px) {
+  .dashboard-panel {
+    width: 100vw;
+    z-index: 50;
+  }
+  
+  .main-content.dashboard-open {
+    margin-right: 0;
+  }
+}
+
+@media (max-width: 768px) {
+  .dashboard-panel {
+    width: 100vw;
+  }
+}
+
+/* Ensure header buttons are properly styled */
+.header .button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Animation for smooth transitions */
+.main-content {
+  transition: margin-right 0.3s ease-in-out;
+}
+
+.dashboard-panel {
+  transition: transform 0.3s ease-in-out;
+}
+
+/* Ensure dashboard content is scrollable */
+.dashboard-panel > * {
+  height: 100%;
+  overflow-y: auto;
+}

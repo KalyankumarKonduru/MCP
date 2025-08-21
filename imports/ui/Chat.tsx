@@ -8,12 +8,16 @@ import { cn } from '/imports/lib/utils';
 import { PreviewMessage, ThinkingMessage } from '/client/components/custom/Message';
 import { Overview } from '/client/components/custom/Overview';
 import { ChatInput } from '/client/components/custom/ChatInput';
-
+import { DashboardContainer } from '/client/components/dashboard/DashboardContainer';
+import { BarChart3 } from 'lucide-react';
 
 const SimpleHeader: React.FC<{
   onToggleSidebar: () => void;
   sidebarOpen: boolean;
-}> = ({ onToggleSidebar, sidebarOpen }) => {
+  onToggleDashboard: () => void;
+  dashboardOpen: boolean;
+  currentPatient?: string;
+}> = ({ onToggleSidebar, sidebarOpen, onToggleDashboard, dashboardOpen, currentPatient }) => {
   return (
     <header className="header">
       <div className="flex items-center gap-3">
@@ -28,6 +32,26 @@ const SimpleHeader: React.FC<{
         </button>
         
         <h1 className="text-lg font-semibold">MedQuery</h1>
+        
+        {currentPatient && (
+          <span className="text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded">
+            Patient: {currentPatient}
+          </span>
+        )}
+      </div>
+      
+      <div className="flex items-center gap-2">
+        <button
+          onClick={onToggleDashboard}
+          className={cn(
+            "button button-sm flex items-center gap-2",
+            dashboardOpen ? "button-primary" : "button-outline"
+          )}
+          title="Toggle dashboard"
+        >
+          <BarChart3 className="h-4 w-4" />
+          Analytics
+        </button>
       </div>
     </header>
   );
@@ -147,6 +171,7 @@ export const Chat: React.FC = () => {
   const [currentPatient, setCurrentPatient] = useState<string>('');
   const [isUploading, setIsUploading] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [dashboardOpen, setDashboardOpen] = useState(false); // Added dashboard state
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [messagesContainerRef] = useScrollToBottom<HTMLDivElement>();
 
@@ -234,6 +259,8 @@ export const Chat: React.FC = () => {
     const patientMatch = text.match(/(?:patient|for)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/i);
     if (patientMatch) {
       setCurrentPatient(patientMatch[1]);
+      // Auto-open dashboard when patient is mentioned
+      setDashboardOpen(true);
       await Meteor.callAsync('sessions.updateMetadata', sessionId, {
         ...currentSession?.metadata,
         patientId: patientMatch[1]
@@ -365,6 +392,7 @@ const handleFileUpload = async (file: File) => {
       setSessionId(newSessionId);
       localStorage.setItem('currentSessionId', newSessionId);
       setCurrentPatient('');
+      setDashboardOpen(false); // Close dashboard on new chat
       
       if (isMobile) {
         setSidebarOpen(false);
@@ -386,6 +414,7 @@ const handleFileUpload = async (file: File) => {
         setCurrentPatient(session.metadata.patientId);
       } else {
         setCurrentPatient('');
+        setDashboardOpen(false); // Close dashboard if no patient
       }
       
       if (isMobile) {
@@ -412,6 +441,10 @@ const handleFileUpload = async (file: File) => {
     setSidebarOpen(!sidebarOpen);
   };
 
+  const toggleDashboard = () => {
+    setDashboardOpen(!dashboardOpen);
+  };
+
   const handleCloseSidebar = () => {
     setSidebarOpen(false);
   };
@@ -422,6 +455,9 @@ const handleFileUpload = async (file: File) => {
       <SimpleHeader 
         onToggleSidebar={toggleSidebar}
         sidebarOpen={sidebarOpen}
+        onToggleDashboard={toggleDashboard}
+        dashboardOpen={dashboardOpen}
+        currentPatient={currentPatient}
       />
 
       {/* Sidebar */}
@@ -445,7 +481,8 @@ const handleFileUpload = async (file: File) => {
       {/* Main Content */}
       <div className={cn(
         "main-content",
-        !sidebarOpen && "sidebar-closed"
+        !sidebarOpen && "sidebar-closed",
+        dashboardOpen && "dashboard-open" // Added dashboard state class
       )}>
         <div className="chat-container">
           <div
@@ -473,6 +510,17 @@ const handleFileUpload = async (file: File) => {
           />
         </div>
       </div>
+
+      {/* Dashboard Panel */}
+      {dashboardOpen && (
+        <div className="dashboard-panel">
+          <DashboardContainer
+            patientId={currentPatient || undefined}
+            onClose={() => setDashboardOpen(false)}
+            className="h-full"
+          />
+        </div>
+      )}
     </div>
   );
 };
